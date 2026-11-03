@@ -10,3 +10,7 @@
   and the albino white with red eyes.
 - Wild budgies in savannas and on jungle edges, in small flocks. A settings file
   (`config/little_birds.properties`) turns natural spawning off or makes it rarer.
+- The perch, crafted from string, a stick and a plank. A tamed budgie makes the nearest perch its
+  home: it keeps near it, sits on it now and then, sleeps on it every night with its head tucked
+  in, and stays home when you go out instead of following. Break the perch and it follows you
+  again.

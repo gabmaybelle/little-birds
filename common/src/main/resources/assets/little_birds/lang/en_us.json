@@ -1,4 +1,5 @@
 {
 	"entity.little_birds.budgie": "Budgie",
-	"item.little_birds.budgie_spawn_egg": "Budgie Spawn Egg"
+	"item.little_birds.budgie_spawn_egg": "Budgie Spawn Egg",
+	"block.little_birds.perch": "Perch"
 }

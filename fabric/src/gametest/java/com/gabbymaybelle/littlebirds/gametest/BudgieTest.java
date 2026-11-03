@@ -2,6 +2,8 @@ package com.gabbymaybelle.littlebirds.gametest;
 
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.Budgie;
+import com.gabbymaybelle.littlebirds.Perch;
+import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,12 +13,14 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -31,6 +35,7 @@ import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * The in-game checks: the mod loads with the mods players are likely to run alongside; a budgie
@@ -50,9 +55,14 @@ public class BudgieTest implements FabricClientGameTest {
 			server.runCommand("gamemode creative @a");
 			server.runCommand("time set day");
 			server.runCommand("weather clear");
+			// Keep the screenshots clean: no command chatter, and the taming advancement granted now rather than popping up later.
+			server.runCommand("gamerule sendCommandFeedback false");
+			server.runCommand("gamerule announceAdvancements false");
+			server.runCommand("advancement grant @a only minecraft:husbandry/tame_an_animal");
 			BlockPos home = server.computeOnServer(s -> player(s).blockPosition());
 			spawn(ctx, server, home);
 			taming(ctx, server, home);
+			perch(ctx, server, home);
 			spawnRules(server, home.offset(6, 0, 6));
 			biomes(server);
 		}
@@ -160,6 +170,70 @@ public class BudgieTest implements FabricClientGameTest {
 		ctx.waitTicks(2);
 		check(!bird.isOrderedToSit(), "using it again stands it up");
 		server.runCommand("kill @e[type=little_birds:budgie]");
+	}
+
+	/**
+	 * A tamed budgie makes the perch near it its home and stays there when its owner goes out; at
+	 * night it flies to the perch, settles on the bar facing the way the perch faces and sleeps;
+	 * in the morning it gets up; and with the perch broken it has no home again.
+	 */
+	private void perch(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		BlockPos perch = home.offset(3, 0, -3);
+		Budgie bird = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+			level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.WEST));
+			level.setBlockAndUpdate(perch.above(), Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch.above(2), Blocks.AIR.defaultBlockState());
+			Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 1.5, home.getY(), home.getZ() + 0.5, 0, 0);
+			b.setColour(Budgie.Colour.GREEN);
+			b.tame(player(s));
+			level.addFreshEntity(b);
+			return b;
+		});
+		check(server.computeOnServer(s -> s.overworld().getBlockState(perch).getBlock() instanceof PerchBlock), "the perch block can be placed");
+		check(waitFor(ctx, server, 600, s -> perch.equals(bird.getPerch())), "a tamed budgie makes the perch near it its home");
+		// With its owner 30 blocks away the bird stays home; with the owner back it doesn't.
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 30.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
+		ctx.waitTicks(5);
+		check(server.computeOnServer(s -> bird.staysHome()), "with its owner away, the budgie stays home");
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
+		ctx.waitTicks(5);
+		check(server.computeOnServer(s -> !bird.staysHome()), "with its owner back, the budgie is free to follow again");
+		server.runCommand("time set night");
+		boolean perched = waitFor(ctx, server, 1200, s -> bird.isPerched());
+		check(perched, "at night the budgie goes to sit on its perch");
+		if (perched) {
+			Vec3 seat = PerchBlock.seat(perch);
+			double off = server.computeOnServer(s -> bird.position().distanceTo(seat));
+			check(off < 0.3, "the budgie sits on the middle of the bar (off by " + String.format("%.2f", off) + ")");
+			float yaw = server.computeOnServer(s -> Mth.wrapDegrees(bird.getYRot() - Direction.WEST.toYRot()));
+			check(Math.abs(yaw) < 5.0F, "the budgie faces the way the perch faces (off by " + yaw + " degrees)");
+			check(server.computeOnServer(s -> bird.isRoosting()), "at night, on its perch, the budgie is asleep");
+			// A look at it side on, from two blocks south of the perch, so the sleeping pose shows.
+			server.runOnServer(s -> player(s).teleportTo(s.overworld(), perch.getX() + 0.5, perch.getY(), perch.getZ() + 2.5, java.util.Set.of(), 180.0F, 10.0F, false));
+			ctx.waitTicks(10);
+			ctx.takeScreenshot("budgie_perch");
+			server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
+		}
+		server.runCommand("time set day");
+		check(waitFor(ctx, server, 1600, s -> !bird.isPerched()), "in the morning the budgie gets up");
+		server.runOnServer(s -> s.overworld().setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState()));
+		check(server.computeOnServer(s -> !bird.hasPerch()), "with the perch broken, the budgie has no home");
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		server.runOnServer(s -> s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState()));
+	}
+
+	/** Waits, in steps of ten ticks, until the condition holds on the server or the ticks run out. */
+	private static boolean waitFor(ClientGameTestContext ctx, TestServerContext server, int maxTicks, java.util.function.Predicate<MinecraftServer> condition) {
+		for (int waited = 0; waited < maxTicks; waited += 10) {
+			if (server.computeOnServer(condition::test)) {
+				return true;
+			}
+			ctx.waitTicks(10);
+		}
+		return server.computeOnServer(condition::test);
 	}
 
 	/**

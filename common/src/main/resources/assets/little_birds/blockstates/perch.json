@@ -1,0 +1,8 @@
+{
+	"variants": {
+		"facing=north": { "model": "little_birds:block/perch" },
+		"facing=east": { "model": "little_birds:block/perch", "y": 90 },
+		"facing=south": { "model": "little_birds:block/perch", "y": 180 },
+		"facing=west": { "model": "little_birds:block/perch", "y": 270 }
+	}
+}

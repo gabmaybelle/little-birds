@@ -13,7 +13,8 @@ yellow) and albino (all white) have no black at all: silvery-white cheeks, red e
     py tools/draw-art.py
 
 Writes common/src/main/resources/assets/little_birds/textures/entity/budgie/budgie_<colour>.png,
-textures/item/budgie_spawn_egg.png and art/icon.png (the icon is a stand-in until the real one).
+textures/item/budgie_spawn_egg.png, textures/block/perch.png and art/icon.png (the icon is a
+stand-in until the real one).
 """
 from pathlib import Path
 
@@ -155,6 +156,42 @@ def egg():
 	img.save(TEX / "item/budgie_spawn_egg.png")
 
 
+def perch():
+	"""The perch block's texture, in the layout models/block/perch.json reads: the base's top (0,0 to 6,6) and
+	sides (0,6 to 6,8) in oak plank; the post's sides (6,0 to 8,8); the bar's top, underside and sides
+	(0,8 to 12,14, a peeled stick with a string wrap near each end) and its ends (12,8 to 14,10)."""
+	plank, plank_dark, plank_line = "#b8945f", "#9a7a4a", "#6e5433"
+	post, post_dark = "#a88654", "#8a6c42"
+	stick, stick_dark, stick_light = "#d2b283", "#a98b5f", "#e6cc9e"
+	string, string_dark = "#eadcc0", "#bfae8c"
+	img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+	px = img.putpixel
+	for y in range(6):
+		for x in range(6):
+			px((x, y), rgb(plank_line if y in (2, 5) else plank_dark if (x + y) % 5 == 0 else plank))
+	for y in range(6, 8):
+		for x in range(6):
+			px((x, y), rgb(plank_dark if y == 7 else plank))
+	for y in range(8):
+		for x in range(6, 8):
+			px((x, y), rgb(post_dark if x == 7 or y % 4 == 3 else post))
+	for y in range(8, 14):
+		for x in range(12):
+			wrapped = x in (1, 2, 9, 10)
+			if y < 10:
+				colour = string if wrapped else stick_light if y == 8 else stick
+			elif y < 12:
+				colour = string_dark if wrapped else stick_dark
+			else:
+				colour = (string if y == 12 else string_dark) if wrapped else (stick if y == 12 else stick_dark)
+			px((x, y), rgb(colour))
+	for y in range(8, 10):
+		for x in range(12, 14):
+			px((x, y), rgb(stick_dark if (x + y) % 2 else stick))
+	(TEX / "block").mkdir(parents=True, exist_ok=True)
+	img.save(TEX / "block/perch.png")
+
+
 def icon():
 	"""A stand-in: a green budgie on a perch, a 32-px sprite scaled to 512 on transparency. The real icon replaces it."""
 	img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
@@ -177,5 +214,6 @@ if __name__ == "__main__":
 	for name, palette in PALETTES.items():
 		budgie(name, palette)
 	egg()
+	perch()
 	icon()
 	print("art written")

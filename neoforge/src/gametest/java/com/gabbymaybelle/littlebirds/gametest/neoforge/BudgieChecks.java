@@ -2,14 +2,18 @@ package com.gabbymaybelle.littlebirds.gametest.neoforge;
 
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.Budgie;
+import com.gabbymaybelle.littlebirds.Perch;
+import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.EntitySpawnReason;
@@ -108,6 +112,76 @@ final class BudgieChecks {
 			tidy.run();
 		}
 		helper.succeed();
+	}
+
+	/**
+	 * At night a tamed budgie claims the perch near it, flies to it, settles on the middle of the
+	 * bar facing the perch's way and sleeps; with the perch broken it has no home and gets up.
+	 */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: a tamed bird needs an owner
+	static void roosts(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		// The 7x5x7 room: the perch towards one wall, the bird three blocks from it at the same height.
+		BlockPos perch = helper.absolutePos(new BlockPos(5, 1, 3));
+		helper.setTime(18000);
+		level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+		level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.WEST));
+		level.setBlockAndUpdate(perch.above(), Blocks.AIR.defaultBlockState());
+		level.setBlockAndUpdate(perch.above(2), Blocks.AIR.defaultBlockState());
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Budgie bird = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+		bird.snapTo(perch.getX() - 2.5, perch.getY(), perch.getZ() + 0.5, 0, 0);
+		bird.tame(player);
+		level.addFreshEntity(bird);
+		int[] phase = {0};
+		int[] ticks = {0};
+		Runnable tidy = () -> {
+			bird.discard();
+			level.getServer().getPlayerList().remove(player);
+			level.setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		};
+		helper.onEachTick(() -> {
+			ticks[0]++;
+			if (ticks[0] % 200 == 0) {
+				System.out.println("[little_birds_gametest] perch: tick " + ticks[0] + ", phase " + phase[0] + ", home " + bird.getPerch() + ", perched " + bird.isPerched() + ", at " + bird.position());
+			}
+			switch (phase[0]) {
+				case 0 -> {
+					if (perch.equals(bird.getPerch())) {
+						System.out.println("[little_birds_gametest] perch: claimed after " + ticks[0] + " ticks");
+						phase[0] = 1;
+					}
+				}
+				case 1 -> {
+					if (bird.isPerched()) {
+						double off = bird.position().distanceTo(PerchBlock.seat(perch));
+						float yaw = Mth.wrapDegrees(bird.getYRot() - Direction.WEST.toYRot());
+						System.out.println("[little_birds_gametest] perch: perched after " + ticks[0] + " ticks, off the seat by " + String.format("%.2f", off) + ", facing off by " + yaw + ", roosting " + bird.isRoosting());
+						try {
+							helper.assertTrue(off < 0.3, "the budgie should sit on the middle of the bar (off by " + off + ")");
+							helper.assertTrue(Math.abs(yaw) < 5.0F, "the budgie should face the way the perch faces (off by " + yaw + ")");
+							helper.assertTrue(bird.isRoosting(), "at night on its perch the budgie should be asleep");
+						} catch (RuntimeException e) {
+							tidy.run();
+							throw e;
+						}
+						level.setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+						phase[0] = 2;
+					}
+				}
+				case 2 -> {
+					if (!bird.hasPerch() && !bird.isPerched()) {
+						System.out.println("[little_birds_gametest] perch: broken, the budgie has no home and is up, after " + ticks[0] + " ticks");
+						tidy.run();
+						phase[0] = 3;
+						helper.succeed();
+					}
+				}
+				default -> {
+				}
+			}
+		});
 	}
 
 	/** Wild budgies may appear on grass in daylight, not on stone, and never while natural spawning is off or the chance is 0. */

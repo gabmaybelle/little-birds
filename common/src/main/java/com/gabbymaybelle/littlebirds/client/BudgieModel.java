@@ -105,8 +105,14 @@ public class BudgieModel extends EntityModel<BudgieRenderState> {
 				this.leftWing.y += bob;
 				this.rightWing.y += bob;
 			}
-			case SITTING -> {
+			case SITTING, ROOSTING -> {
 				// Settled down over the feet, wings folded, tail resting lower.
+				if (state.pose == BudgieRenderState.Pose.ROOSTING) {
+					// Asleep: the head sinks into the shoulders, turned a little to one side, and stops following players.
+					this.head.xRot = 0.5F;
+					this.head.yRot = 0.6F;
+					this.head.y += 0.8F;
+				}
 				this.body.y += 1.4F;
 				this.head.y += 1.4F;
 				this.tail.y += 1.4F;

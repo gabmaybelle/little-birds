@@ -27,6 +27,8 @@ public final class LittleBirdsGameTests {
 	static final String MOD_ID = "little_birds_gametest";
 	/** Vanilla's 1x1x1 template, for tests that build nothing. */
 	private static final Identifier EMPTY = Identifier.withDefaultNamespace("empty");
+	/** An empty 7x5x7 room of the mod's own (tools/make-test-room.py), for a test where a bird moves about: everything stays inside the test's loaded, ticking bounds. */
+	private static final Identifier ROOM = id("room");
 
 	/** The test functions by name; the test instance of the same name runs each. */
 	private static final Map<String, Consumer<GameTestHelper>> FUNCTIONS = new LinkedHashMap<>();
@@ -35,6 +37,7 @@ public final class LittleBirdsGameTests {
 		FUNCTIONS.put("loaded", BudgieChecks::loaded);
 		FUNCTIONS.put("budgie_lives", BudgieChecks::lives);
 		FUNCTIONS.put("seeds_tame_a_budgie", BudgieChecks::tames);
+		FUNCTIONS.put("a_budgie_sleeps_on_its_perch", BudgieChecks::roosts);
 		FUNCTIONS.put("wild_budgies_follow_the_settings", BudgieChecks::spawnRules);
 		FUNCTIONS.put("savannas_and_jungles_spawn_budgies", BudgieChecks::biomes);
 	}
@@ -61,6 +64,7 @@ public final class LittleBirdsGameTests {
 		test(event, "loaded", plain, EMPTY, 20);
 		test(event, "budgie_lives", plain, EMPTY, 100);
 		test(event, "seeds_tame_a_budgie", plain, EMPTY, 40);
+		test(event, "a_budgie_sleeps_on_its_perch", plain, ROOM, 1600);
 		test(event, "wild_budgies_follow_the_settings", plain, EMPTY, 20);
 		test(event, "savannas_and_jungles_spawn_budgies", plain, EMPTY, 20);
 	}

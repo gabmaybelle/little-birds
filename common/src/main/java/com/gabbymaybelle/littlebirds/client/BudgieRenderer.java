@@ -37,6 +37,8 @@ public class BudgieRenderer extends MobRenderer<Budgie, BudgieRenderState, Budgi
 		float flap = Mth.lerp(partialTicks, bird.oFlap, bird.flap);
 		float flapSpeed = Mth.lerp(partialTicks, bird.oFlapSpeed, bird.flapSpeed);
 		state.flapAngle = (Mth.sin(flap) + 1.0F) * flapSpeed;
-		state.pose = bird.isInSittingPose() ? BudgieRenderState.Pose.SITTING : bird.isFlying() ? BudgieRenderState.Pose.FLYING : BudgieRenderState.Pose.STANDING;
+		state.pose = bird.isRoosting() ? BudgieRenderState.Pose.ROOSTING
+				: bird.isInSittingPose() ? BudgieRenderState.Pose.SITTING
+				: bird.isFlying() ? BudgieRenderState.Pose.FLYING : BudgieRenderState.Pose.STANDING;
 	}
 }

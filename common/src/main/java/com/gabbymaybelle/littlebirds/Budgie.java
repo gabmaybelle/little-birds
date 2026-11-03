@@ -20,6 +20,7 @@ import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
@@ -52,9 +53,12 @@ import org.jspecify.annotations.Nullable;
  * owner are vanilla's; what this mod adds, release by release, is a home (a perch), a greeting
  * when its owner comes back, and a shoulder it only rides when asked.
  *
- * <p>This first cut is the bird itself: it flies, is tamed with seeds (one try in three), sits
- * when told, follows its owner, and never jumps onto a shoulder by itself. Its voice is the
- * parrot's, pitched up, until it has its own sounds.
+ * <p>So far: it flies, is tamed with seeds (one try in three), sits when told, follows its owner,
+ * and never jumps onto a shoulder by itself. A tamed bird makes the nearest perch its home
+ * ({@link FindPerchGoal}): it keeps near it, goes back to sit on it ({@link RoostGoal}) every
+ * night and whenever its owner is away, and stays home rather than following its owner out.
+ * Break the perch and it is an ordinary pet again. Its voice is the parrot's, pitched up, until
+ * it has its own sounds.
  */
 public class Budgie extends ShoulderRidingEntity {
 	/** The four colours, in the order of {@link #COLOURS}; a wild budgie picks one at random. */
@@ -69,6 +73,15 @@ public class Budgie extends ShoulderRidingEntity {
 	}
 
 	private static final EntityDataAccessor<Integer> DATA_COLOUR = SynchedEntityData.defineId(Budgie.class, EntityDataSerializers.INT);
+	private static final EntityDataAccessor<Boolean> DATA_PERCHED = SynchedEntityData.defineId(Budgie.class, EntityDataSerializers.BOOLEAN);
+
+	/** How far from the perch its owner can be and still count as home; farther, and the bird stays rather than follows. */
+	public static final double HOME_RANGE = 16.0;
+	/** How far from its perch a bird wanders on its own. */
+	private static final int WANDER_RANGE = 8;
+
+	/** The perch this bird calls home, if it has one. */
+	private @Nullable BlockPos perch;
 
 	// The flap animation, as vanilla's parrot keeps it: the renderer reads these.
 	public float flap;
@@ -111,10 +124,87 @@ public class Budgie extends ShoulderRidingEntity {
 		this.goalSelector.addGoal(0, new TamableAnimal.TamableAnimalPanicGoal(1.25));
 		this.goalSelector.addGoal(0, new FloatGoal(this));
 		this.goalSelector.addGoal(1, new LookAtPlayerGoal(this, Player.class, 8.0F));
+		this.goalSelector.addGoal(1, new RoostGoal(this));
 		this.goalSelector.addGoal(2, new SitWhenOrderedToGoal(this));
-		this.goalSelector.addGoal(2, new FollowOwnerGoal(this, 1.0, 5.0F, 1.0F));
+		this.goalSelector.addGoal(2, new StayHomeFollowOwnerGoal(this));
 		this.goalSelector.addGoal(2, new WaterAvoidingRandomFlyingGoal(this, 1.0));
+		this.goalSelector.addGoal(3, new FindPerchGoal(this));
 		// No LandOnOwnersShoulderGoal: a budgie rides a shoulder only when asked (a later release).
+	}
+
+	/** Vanilla's follow, except that a bird at home stays there when its owner goes out. */
+	private static class StayHomeFollowOwnerGoal extends FollowOwnerGoal {
+		private final Budgie bird;
+
+		StayHomeFollowOwnerGoal(Budgie bird) {
+			super(bird, 1.0, 5.0F, 1.0F);
+			this.bird = bird;
+		}
+
+		@Override
+		public boolean canUse() {
+			return !this.bird.staysHome() && super.canUse();
+		}
+
+		@Override
+		public boolean canContinueToUse() {
+			return !this.bird.staysHome() && super.canContinueToUse();
+		}
+	}
+
+	/** A bird at home doesn't teleport after an owner who has gone out, either. */
+	@Override
+	public boolean shouldTryTeleportToOwner() {
+		return !this.staysHome() && super.shouldTryTeleportToOwner();
+	}
+
+	/**
+	 * Whether the bird stays home instead of following: it has a perch, it is near it, and its
+	 * owner is away (farther than {@link #HOME_RANGE} from the perch, or not here at all).
+	 */
+	public boolean staysHome() {
+		BlockPos perch = this.getPerch();
+		if (perch == null || perch.distToCenterSqr(this.position()) >= RoostGoal.FLY_HOME_RANGE * RoostGoal.FLY_HOME_RANGE) {
+			return false;
+		}
+		LivingEntity owner = this.getOwner();
+		return owner == null || perch.distToCenterSqr(owner.position()) >= HOME_RANGE * HOME_RANGE;
+	}
+
+	/** The bird's perch, or null once it has none or the block is gone (checked as it's asked). */
+	public @Nullable BlockPos getPerch() {
+		if (this.perch != null && !this.level().getBlockState(this.perch).is(Perch.BLOCK.get())) {
+			this.setPerch(null);
+		}
+		return this.perch;
+	}
+
+	public boolean hasPerch() {
+		return this.getPerch() != null;
+	}
+
+	/** Makes a perch the bird's home (or, with null, takes it away); its wandering keeps within reach of it. */
+	public void setPerch(@Nullable BlockPos pos) {
+		this.perch = pos == null ? null : pos.immutable();
+		if (pos == null) {
+			this.setHomeTo(BlockPos.ZERO, -1);
+		} else {
+			this.setHomeTo(pos, WANDER_RANGE);
+		}
+	}
+
+	/** Whether the bird is sitting on its perch right now. */
+	public boolean isPerched() {
+		return this.entityData.get(DATA_PERCHED);
+	}
+
+	public void setPerched(boolean perched) {
+		this.entityData.set(DATA_PERCHED, perched);
+	}
+
+	/** Whether the bird is asleep on its perch: on it, after dark. */
+	public boolean isRoosting() {
+		return this.isPerched() && this.level().isDarkOutside();
 	}
 
 	@Override
@@ -283,18 +373,23 @@ public class Budgie extends ShoulderRidingEntity {
 	protected void defineSynchedData(SynchedEntityData.Builder data) {
 		super.defineSynchedData(data);
 		data.define(DATA_COLOUR, Colour.GREEN.ordinal());
+		data.define(DATA_PERCHED, false);
 	}
 
 	@Override
 	protected void addAdditionalSaveData(ValueOutput output) {
 		super.addAdditionalSaveData(output);
 		output.putInt("Colour", this.getColour().ordinal());
+		if (this.perch != null) {
+			output.store("Perch", BlockPos.CODEC, this.perch);
+		}
 	}
 
 	@Override
 	protected void readAdditionalSaveData(ValueInput input) {
 		super.readAdditionalSaveData(input);
 		this.setColour(Colour.byId(input.getIntOr("Colour", 0)));
+		this.setPerch(input.read("Perch", BlockPos.CODEC).orElse(null));
 	}
 
 	public boolean isFlying() {
