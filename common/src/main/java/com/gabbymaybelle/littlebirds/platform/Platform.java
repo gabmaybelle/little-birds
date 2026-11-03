@@ -1,12 +1,13 @@
 package com.gabbymaybelle.littlebirds.platform;
 
+import com.gabbymaybelle.littlebirds.MobSpec;
+import java.nio.file.Path;
 import java.util.function.Supplier;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.level.ItemLike;
 
@@ -19,15 +20,21 @@ public interface Platform {
 	/** "Fabric" or "NeoForge", for the log. */
 	String name();
 
+	/** The game's config folder, where the settings file lives. */
+	Path configDir();
+
 	/**
-	 * Registers something (an entity type, an item...). Fabric does it at once; NeoForge waits
-	 * for its registry event, so the result is a supplier that is only valid once the game has
-	 * finished loading.
+	 * Registers something (an item, a sound...). Fabric does it at once; NeoForge waits for its
+	 * registry event, so the result is a supplier that is only valid once the game has finished
+	 * loading.
 	 */
 	<T> Supplier<T> register(ResourceKey<? extends Registry<T>> registry, Identifier id, Supplier<T> factory);
 
-	/** Gives a mob its default attributes (health, speed...). Each loader has its own moment for this. */
-	void registerAttributes(Supplier<? extends EntityType<? extends LivingEntity>> type, Supplier<AttributeSupplier.Builder> attributes);
+	/**
+	 * Registers a mob: its entity type, default attributes, where it may spawn naturally and, on
+	 * loaders that do spawns in code, which biomes spawn it.
+	 */
+	<T extends Mob> Supplier<EntityType<T>> registerMob(MobSpec<T> spec);
 
 	/** Puts an item in one of the vanilla creative tabs. */
 	void addToCreativeTab(ResourceKey<CreativeModeTab> tab, Supplier<? extends ItemLike> item);

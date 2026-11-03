@@ -19,6 +19,7 @@ public final class LittleBirds {
 	}
 
 	public static void init() {
+		Settings.load();
 		Birds.register();
 		LOGGER.info("Little Birds: ready on {}", Services.PLATFORM.name());
 	}

@@ -8,8 +8,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -35,6 +37,7 @@ import net.minecraft.world.entity.animal.parrot.ShoulderRidingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.PathType;
@@ -175,6 +178,18 @@ public class Budgie extends ShoulderRidingEntity {
 	@Override
 	public boolean isFood(ItemStack stack) {
 		return false;
+	}
+
+	/**
+	 * Where a wild budgie may appear: on grass or leaves in daylight, like a parrot, and only while
+	 * {@code natural_spawning} is on, at the {@code spawn_chance} rate. Spawn eggs and commands
+	 * don't come through here.
+	 */
+	public static boolean checkSpawnRules(EntityType<Budgie> type, LevelAccessor level, EntitySpawnReason reason, BlockPos pos, RandomSource random) {
+		if (!Settings.naturalSpawning || random.nextInt(100) >= Settings.spawnChance) {
+			return false;
+		}
+		return level.getBlockState(pos.below()).is(BlockTags.PARROTS_SPAWNABLE_ON) && isBrightEnoughToSpawn(level, pos);
 	}
 
 	@Override
