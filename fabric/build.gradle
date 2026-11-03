@@ -1,0 +1,61 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+// The common sources and assets are compiled straight into this jar, so the Fabric mod is one file.
+sourceSets.main {
+	java.srcDir project(':common').file('src/main/java')
+	resources.srcDir project(':common').file('src/main/resources')
+}
+
+loom {
+	mods {
+		"little_birds" {
+			sourceSet sourceSets.main
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// `-PcompatMods=<folder>`: also load every jar in that folder (the mods players are likely to
+	// run alongside, and their libraries) in the game test. tools/fetch-test-mods.js fills it.
+	if (project.hasProperty("compatMods")) {
+		runtimeOnly fileTree(project.compatMods) { include "*.jar" }
+	}
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+	// The mod icon (art/icon.png); the jar carries it as icon.png.
+	from(rootProject.file('art/icon.png'))
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+// little-birds-fabric-<version>.jar, the name players download.
+tasks.named('jar') { archiveBaseName = "${rootProject.name}-fabric" }
+tasks.named('sourcesJar') { archiveBaseName = "${rootProject.name}-fabric" }
+
+// Client game tests: `./gradlew :fabric:runClientGameTest` starts a real game and plays through
+// the checks in src/gametest. Nothing there ships in the jar.
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "little_birds_gametest"
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}
+
+// `-PexpectMods=<ids>`: comma-separated mod ids the game test must find loaded, so a run whose
+// compat jars didn't load fails instead of passing without them.
+tasks.withType(JavaExec).configureEach {
+	systemProperty "little_birds.expectMods", project.findProperty("expectMods") ?: ""
+}

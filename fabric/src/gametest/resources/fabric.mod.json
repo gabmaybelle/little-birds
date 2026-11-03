@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "little_birds_gametest",
+	"version": "1.0.0",
+	"name": "Little Birds game tests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"com.gabbymaybelle.littlebirds.gametest.BudgieTest"
+		]
+	},
+	"depends": {
+		"little_birds": "*"
+	}
+}

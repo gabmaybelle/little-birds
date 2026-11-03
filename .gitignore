@@ -1,0 +1,17 @@
+build/
+dist/
+
+# gradle and loader run folders
+.gradle/
+run/
+runs/
+out/
+.idea/
+*.iml
+
+# build and test logs
+*.log
+hs_err_*.log
+
+# test mods fetched by tools/fetch-test-mods.js
+test-mods/

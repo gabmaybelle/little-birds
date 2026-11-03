@@ -1,0 +1,21 @@
+pluginManagement {
+	repositories {
+		maven {
+			name = 'Fabric'
+			url = 'https://maven.fabricmc.net/'
+		}
+		maven {
+			name = 'NeoForged'
+			url = 'https://maven.neoforged.net/releases/'
+		}
+		mavenCentral()
+		gradlePluginPortal()
+	}
+}
+
+rootProject.name = 'little-birds'
+
+// `common` holds the code and assets that don't care which loader they run on. `fabric` and
+// `neoforge` compile those sources straight into their own jars, so there is one codebase and
+// two mod files.
+include 'common', 'fabric', 'neoforge'

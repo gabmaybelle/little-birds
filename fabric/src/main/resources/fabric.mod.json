@@ -1,0 +1,32 @@
+{
+	"schemaVersion": 1,
+	"id": "little_birds",
+	"version": "${version}",
+	"name": "Little Birds",
+	"description": "Make your cottage cozier with a bird or two. Little pet birds that make a perch their own and are glad when you come home.",
+	"authors": [
+		"Gabby"
+	],
+	"contact": {
+		"homepage": "https://github.com/gabmaybelle/little-birds",
+		"sources": "https://github.com/gabmaybelle/little-birds",
+		"issues": "https://github.com/gabmaybelle/little-birds/issues"
+	},
+	"license": "MIT",
+	"icon": "icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.gabbymaybelle.littlebirds.fabric.LittleBirdsFabric"
+		],
+		"client": [
+			"com.gabbymaybelle.littlebirds.fabric.LittleBirdsFabricClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"fabric-api": "*",
+		"minecraft": "~26.3",
+		"java": ">=25"
+	}
+}

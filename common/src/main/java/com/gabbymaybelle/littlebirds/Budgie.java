@@ -1,0 +1,303 @@
+package com.gabbymaybelle.littlebirds;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.util.Mth;
+import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.AgeableMob;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.SpawnGroupData;
+import net.minecraft.world.entity.TamableAnimal;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.control.FlyingMoveControl;
+import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
+import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
+import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
+import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomFlyingGoal;
+import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
+import net.minecraft.world.entity.animal.Animal;
+import net.minecraft.world.entity.animal.parrot.ShoulderRidingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.pathfinder.PathType;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * A budgie: a small pet bird that comes in four colours. It is built on vanilla's shoulder-riding
+ * tamable base (what the parrot uses), so flying, taming with seeds, sitting and following its
+ * owner are vanilla's; what this mod adds, release by release, is a home (a perch), a greeting
+ * when its owner comes back, and a shoulder it only rides when asked.
+ *
+ * <p>This first cut is the bird itself: it flies, is tamed with seeds (one try in three), sits
+ * when told, follows its owner, and never jumps onto a shoulder by itself. Its voice is the
+ * parrot's, pitched up, until it has its own sounds.
+ */
+public class Budgie extends ShoulderRidingEntity {
+	/** The four colours, in the order of {@link #COLOURS}; a wild budgie picks one at random. */
+	public enum Colour {
+		GREEN, BLUE, YELLOW, WHITE;
+
+		public static final Colour[] COLOURS = values();
+
+		public static Colour byId(int id) {
+			return COLOURS[Mth.clamp(id, 0, COLOURS.length - 1)];
+		}
+	}
+
+	private static final EntityDataAccessor<Integer> DATA_COLOUR = SynchedEntityData.defineId(Budgie.class, EntityDataSerializers.INT);
+
+	// The flap animation, as vanilla's parrot keeps it: the renderer reads these.
+	public float flap;
+	public float flapSpeed;
+	public float oFlapSpeed;
+	public float oFlap;
+	private float flapping = 1.0F;
+
+	public Budgie(EntityType<? extends Budgie> type, Level level) {
+		super(type, level);
+		this.moveControl = new FlyingMoveControl<>(this, 10, false);
+		this.setPathfindingMalus(PathType.FIRE_IN_NEIGHBOR, -1.0F);
+		this.setPathfindingMalus(PathType.FIRE, -1.0F);
+		this.setPathfindingMalus(PathType.COCOA, -1.0F);
+	}
+
+	public static AttributeSupplier.Builder createAttributes() {
+		return Animal.createAnimalAttributes()
+				.add(Attributes.MAX_HEALTH, 5.0)
+				.add(Attributes.FLYING_SPEED, 0.4F)
+				.add(Attributes.MOVEMENT_SPEED, 0.2F);
+	}
+
+	@Override
+	public @Nullable SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData) {
+		this.setColour(Colour.COLOURS[level.getRandom().nextInt(Colour.COLOURS.length)]);
+		if (groupData == null) {
+			groupData = new AgeableMob.AgeableMobGroupData(false);
+		}
+		return super.finalizeSpawn(level, difficulty, reason, groupData);
+	}
+
+	@Override
+	protected boolean canBeABaby() {
+		return false;
+	}
+
+	@Override
+	protected void registerGoals() {
+		this.goalSelector.addGoal(0, new TamableAnimal.TamableAnimalPanicGoal(1.25));
+		this.goalSelector.addGoal(0, new FloatGoal(this));
+		this.goalSelector.addGoal(1, new LookAtPlayerGoal(this, Player.class, 8.0F));
+		this.goalSelector.addGoal(2, new SitWhenOrderedToGoal(this));
+		this.goalSelector.addGoal(2, new FollowOwnerGoal(this, 1.0, 5.0F, 1.0F));
+		this.goalSelector.addGoal(2, new WaterAvoidingRandomFlyingGoal(this, 1.0));
+		// No LandOnOwnersShoulderGoal: a budgie rides a shoulder only when asked (a later release).
+	}
+
+	@Override
+	protected PathNavigation createNavigation(Level level) {
+		FlyingPathNavigation navigation = new FlyingPathNavigation(this, level);
+		navigation.setCanOpenDoors(false);
+		navigation.setCanFloat(true);
+		return navigation;
+	}
+
+	@Override
+	public void aiStep() {
+		super.aiStep();
+		this.calculateFlapping();
+	}
+
+	private void calculateFlapping() {
+		this.oFlap = this.flap;
+		this.oFlapSpeed = this.flapSpeed;
+		this.flapSpeed = this.flapSpeed + (!this.onGround() && !this.isPassenger() ? 4 : -1) * 0.3F;
+		this.flapSpeed = Mth.clamp(this.flapSpeed, 0.0F, 1.0F);
+		if (!this.onGround() && this.flapping < 1.0F) {
+			this.flapping = 1.0F;
+		}
+		this.flapping *= 0.9F;
+		Vec3 movement = this.getDeltaMovement();
+		if (!this.onGround() && movement.y < 0.0) {
+			this.setDeltaMovement(movement.multiply(1.0, 0.6, 1.0));
+		}
+		this.flap = this.flap + this.flapping * 2.0F;
+	}
+
+	/** Seeds tame a wild budgie (one try in three); a tamed one sits or stands up when its owner uses it. */
+	@Override
+	public InteractionResult mobInteract(Player player, InteractionHand hand) {
+		ItemStack stack = player.getItemInHand(hand);
+		if (!this.isTame() && stack.is(ItemTags.PARROT_FOOD)) {
+			this.usePlayerItem(player, hand, stack);
+			if (!this.isSilent()) {
+				this.level().playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.PARROT_EAT, this.getSoundSource(), 1.0F, this.getVoicePitch());
+			}
+			if (!this.level().isClientSide()) {
+				if (this.random.nextInt(3) == 0) {
+					this.tame(player);
+					this.level().broadcastEntityEvent(this, (byte) 7);
+				} else {
+					this.level().broadcastEntityEvent(this, (byte) 6);
+				}
+			}
+			return InteractionResult.SUCCESS;
+		}
+		if (!this.isFlying() && this.isTame() && this.isOwnedBy(player)) {
+			if (!this.level().isClientSide()) {
+				this.setOrderedToSit(!this.isOrderedToSit());
+			}
+			return InteractionResult.SUCCESS;
+		}
+		return super.mobInteract(player, hand);
+	}
+
+	@Override
+	public boolean isFood(ItemStack stack) {
+		return false;
+	}
+
+	@Override
+	public boolean canMate(Animal partner) {
+		return false;
+	}
+
+	@Override
+	public @Nullable AgeableMob getBreedOffspring(ServerLevel level, AgeableMob partner) {
+		return null;
+	}
+
+	@Override
+	protected void checkFallDamage(double y, boolean onGround, BlockState state, BlockPos pos) {
+	}
+
+	@Override
+	public @Nullable SoundEvent getAmbientSound() {
+		return SoundEvents.PARROT_AMBIENT;
+	}
+
+	@Override
+	protected SoundEvent getHurtSound(DamageSource source) {
+		return SoundEvents.PARROT_HURT;
+	}
+
+	@Override
+	protected SoundEvent getDeathSound() {
+		return SoundEvents.PARROT_DEATH;
+	}
+
+	@Override
+	protected void playStepSound(BlockPos pos, BlockState state) {
+		this.playSound(SoundEvents.PARROT_STEP, 0.15F, 1.0F);
+	}
+
+	@Override
+	protected boolean isFlapping() {
+		return this.flyDist > this.nextFlap;
+	}
+
+	private float nextFlap = 1.0F;
+
+	@Override
+	protected void onFlap() {
+		this.playSound(SoundEvents.PARROT_FLY, 0.15F, 1.0F);
+		this.nextFlap = this.flyDist + this.flapSpeed / 2.0F;
+	}
+
+	/** A small bird, a high voice: a touch above the parrot's. */
+	@Override
+	public float getVoicePitch() {
+		return (this.random.nextFloat() - this.random.nextFloat()) * 0.2F + 1.3F;
+	}
+
+	@Override
+	public SoundSource getSoundSource() {
+		return SoundSource.NEUTRAL;
+	}
+
+	@Override
+	public boolean isPushable() {
+		return true;
+	}
+
+	@Override
+	protected void doPush(Entity entity) {
+		if (!(entity instanceof Player)) {
+			super.doPush(entity);
+		}
+	}
+
+	@Override
+	public boolean hurtServer(ServerLevel level, DamageSource source, float damage) {
+		if (this.isInvulnerableTo(level, source)) {
+			return false;
+		}
+		this.setOrderedToSit(false);
+		return super.hurtServer(level, source, damage);
+	}
+
+	public Colour getColour() {
+		return Colour.byId(this.entityData.get(DATA_COLOUR));
+	}
+
+	public void setColour(Colour colour) {
+		this.entityData.set(DATA_COLOUR, colour.ordinal());
+	}
+
+	@Override
+	protected void defineSynchedData(SynchedEntityData.Builder data) {
+		super.defineSynchedData(data);
+		data.define(DATA_COLOUR, Colour.GREEN.ordinal());
+	}
+
+	@Override
+	protected void addAdditionalSaveData(ValueOutput output) {
+		super.addAdditionalSaveData(output);
+		output.putInt("Colour", this.getColour().ordinal());
+	}
+
+	@Override
+	protected void readAdditionalSaveData(ValueInput input) {
+		super.readAdditionalSaveData(input);
+		this.setColour(Colour.byId(input.getIntOr("Colour", 0)));
+	}
+
+	public boolean isFlying() {
+		return !this.onGround();
+	}
+
+	@Override
+	protected boolean omnidirectionalAirMover() {
+		return true;
+	}
+
+	@Override
+	protected boolean canFlyToOwner() {
+		return true;
+	}
+
+	@Override
+	public Vec3 getLeashOffset() {
+		return new Vec3(0.0, 0.5F * this.getEyeHeight(), this.getBbWidth() * 0.4F);
+	}
+}

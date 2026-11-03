@@ -1,0 +1,25 @@
+license = "MIT"
+issueTrackerURL = "https://github.com/gabmaybelle/little-birds/issues"
+
+[[mods]]
+modId = "little_birds"
+version = "${version}"
+displayName = "Little Birds"
+logoFile = "icon.png"
+authors = "Gabby"
+description = '''Make your cottage cozier with a bird or two. Little pet birds that make a perch their own and are glad when you come home.'''
+displayURL = "https://github.com/gabmaybelle/little-birds"
+
+[[dependencies.little_birds]]
+modId = "neoforge"
+type = "required"
+versionRange = "[26.3,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.little_birds]]
+modId = "minecraft"
+type = "required"
+versionRange = "[26.3,26.4)"
+ordering = "NONE"
+side = "BOTH"

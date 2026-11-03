@@ -1,0 +1,16 @@
+# Little Birds' NeoForge game tests. Only `./gradlew :neoforge:runGameTestServer` loads this mod;
+# nothing here ships in the jar.
+license = "MIT"
+
+[[mods]]
+modId = "little_birds_gametest"
+version = "1.0.0"
+displayName = "Little Birds game tests"
+description = '''The checks behind Little Birds, for vanilla's test framework.'''
+
+[[dependencies.little_birds_gametest]]
+modId = "little_birds"
+type = "required"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
