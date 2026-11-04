@@ -4,6 +4,8 @@ import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.client.BudgieModel;
 import com.gabbymaybelle.littlebirds.client.CockatielModel;
 import com.gabbymaybelle.littlebirds.client.CockatielRenderer;
+import com.gabbymaybelle.littlebirds.client.LovebirdModel;
+import com.gabbymaybelle.littlebirds.client.LovebirdRenderer;
 import com.gabbymaybelle.littlebirds.client.BudgieRenderer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
@@ -17,5 +19,7 @@ public class LittleBirdsFabricClient implements ClientModInitializer {
 		EntityRendererRegistry.register(Birds.BUDGIE.get(), BudgieRenderer::new);
 		ModelLayerRegistry.registerModelLayer(CockatielModel.LAYER, CockatielModel::createBodyLayer);
 		EntityRendererRegistry.register(Birds.COCKATIEL.get(), CockatielRenderer::new);
+		ModelLayerRegistry.registerModelLayer(LovebirdModel.LAYER, LovebirdModel::createBodyLayer);
+		EntityRendererRegistry.register(Birds.LOVEBIRD.get(), LovebirdRenderer::new);
 	}
 }

@@ -59,9 +59,9 @@ public class FindPerchGoal extends Goal {
 		return nearest;
 	}
 
-	/** Lovebirds will share a perch one day; for now one bird, one perch. */
+	/** A perch another bird already calls home is taken, unless the two share (a lovebird and its partner). */
 	private boolean claimedByAnother(BlockPos perch) {
 		AABB around = new AABB(perch).inflate(FindPerchGoal.REACH * 2);
-		return !this.bird.level().getEntitiesOfClass(LittleBird.class, around, other -> other != this.bird && perch.equals(other.getPerch())).isEmpty();
+		return !this.bird.level().getEntitiesOfClass(LittleBird.class, around, other -> other != this.bird && perch.equals(other.getPerch()) && !this.bird.sharesPerchWith(other)).isEmpty();
 	}
 }

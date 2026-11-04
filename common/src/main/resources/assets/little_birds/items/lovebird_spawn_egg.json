@@ -1,0 +1,6 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "little_birds:item/lovebird_spawn_egg"
+	}
+}

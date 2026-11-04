@@ -5,6 +5,8 @@ import com.gabbymaybelle.littlebirds.LittleBirds;
 import com.gabbymaybelle.littlebirds.client.BudgieModel;
 import com.gabbymaybelle.littlebirds.client.CockatielModel;
 import com.gabbymaybelle.littlebirds.client.CockatielRenderer;
+import com.gabbymaybelle.littlebirds.client.LovebirdModel;
+import com.gabbymaybelle.littlebirds.client.LovebirdRenderer;
 import com.gabbymaybelle.littlebirds.client.BudgieRenderer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -18,10 +20,12 @@ public class LittleBirdsNeoForgeClient {
 		modBus.addListener(EntityRenderersEvent.RegisterLayerDefinitions.class, event -> {
 			event.registerLayerDefinition(BudgieModel.LAYER, BudgieModel::createBodyLayer);
 			event.registerLayerDefinition(CockatielModel.LAYER, CockatielModel::createBodyLayer);
+			event.registerLayerDefinition(LovebirdModel.LAYER, LovebirdModel::createBodyLayer);
 		});
 		modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event -> {
 			event.registerEntityRenderer(Birds.BUDGIE.get(), BudgieRenderer::new);
 			event.registerEntityRenderer(Birds.COCKATIEL.get(), CockatielRenderer::new);
+			event.registerEntityRenderer(Birds.LOVEBIRD.get(), LovebirdRenderer::new);
 		});
 	}
 }

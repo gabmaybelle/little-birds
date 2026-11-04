@@ -25,6 +25,13 @@ public final class Sounds {
 	/** The soft call as it settles on its perch for the night. */
 	public static final Supplier<SoundEvent> COCKATIEL_SETTLE = sound("cockatiel_settle");
 
+	/** A lovebird's sharp little chirps. */
+	public static final Supplier<SoundEvent> LOVEBIRD_CHATTER = sound("lovebird_chatter");
+	/** The chirp when its owner comes home. */
+	public static final Supplier<SoundEvent> LOVEBIRD_GREETING = sound("lovebird_greeting");
+	/** The soft call as it settles on its perch for the night. */
+	public static final Supplier<SoundEvent> LOVEBIRD_SETTLE = sound("lovebird_settle");
+
 	private Sounds() {
 	}
 

@@ -1,13 +1,18 @@
 {
 	"entity.little_birds.budgie": "Budgie",
 	"entity.little_birds.cockatiel": "Cockatiel",
+	"entity.little_birds.lovebird": "Lovebird",
 	"item.little_birds.budgie_spawn_egg": "Budgie Spawn Egg",
 	"item.little_birds.cockatiel_spawn_egg": "Cockatiel Spawn Egg",
+	"item.little_birds.lovebird_spawn_egg": "Lovebird Spawn Egg",
 	"block.little_birds.perch": "Perch",
 	"subtitles.little_birds.budgie_chatter": "Budgie chatters",
 	"subtitles.little_birds.budgie_greeting": "Budgie chirps hello",
 	"subtitles.little_birds.budgie_settle": "Budgie settles down",
 	"subtitles.little_birds.cockatiel_chatter": "Cockatiel chirps",
 	"subtitles.little_birds.cockatiel_greeting": "Cockatiel whistles hello",
-	"subtitles.little_birds.cockatiel_settle": "Cockatiel settles down"
+	"subtitles.little_birds.cockatiel_settle": "Cockatiel settles down",
+	"subtitles.little_birds.lovebird_chatter": "Lovebird chirps",
+	"subtitles.little_birds.lovebird_greeting": "Lovebird chirps hello",
+	"subtitles.little_birds.lovebird_settle": "Lovebird settles down"
 }

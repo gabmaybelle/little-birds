@@ -19,8 +19,10 @@ import net.minecraft.world.level.levelgen.Heightmap;
 public final class Birds {
 	public static final Identifier BUDGIE_ID = LittleBirds.id("budgie");
 	public static final Identifier COCKATIEL_ID = LittleBirds.id("cockatiel");
+	public static final Identifier LOVEBIRD_ID = LittleBirds.id("lovebird");
 	private static final ResourceKey<Item> BUDGIE_EGG_KEY = ResourceKey.create(Registries.ITEM, LittleBirds.id("budgie_spawn_egg"));
 	private static final ResourceKey<Item> COCKATIEL_EGG_KEY = ResourceKey.create(Registries.ITEM, LittleBirds.id("cockatiel_spawn_egg"));
+	private static final ResourceKey<Item> LOVEBIRD_EGG_KEY = ResourceKey.create(Registries.ITEM, LittleBirds.id("lovebird_spawn_egg"));
 
 	/**
 	 * Where wild budgies live: savanna (the real bird's home, open grassland) and jungle edges.
@@ -35,6 +37,10 @@ public final class Birds {
 	public static final List<MobSpec.Spawn> COCKATIEL_SPAWNS = List.of(
 			new MobSpec.Spawn(BiomeTags.IS_SAVANNA, 8, 2, 3));
 
+	/** Lovebirds live in pairs: a savanna spawns them two at a time. */
+	public static final List<MobSpec.Spawn> LOVEBIRD_SPAWNS = List.of(
+			new MobSpec.Spawn(BiomeTags.IS_SAVANNA, 6, 2, 2));
+
 	/** A budgie is a little smaller than a parrot (0.5 x 0.9): it needs to fit on a perch. */
 	public static final Supplier<EntityType<Budgie>> BUDGIE = Services.PLATFORM.registerMob(new MobSpec<>(
 			BUDGIE_ID, Budgie::new, MobCategory.CREATURE, 0.4F, 0.7F, 0.5F, Budgie::createAttributes,
@@ -45,11 +51,19 @@ public final class Birds {
 			COCKATIEL_ID, Cockatiel::new, MobCategory.CREATURE, 0.5F, 0.9F, 0.65F, Cockatiel::createAttributes,
 			SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING, LittleBird::checkSpawnRules, COCKATIEL_SPAWNS));
 
+	/** A lovebird is a budgie's size, a touch rounder; two fit on one bar. */
+	public static final Supplier<EntityType<Lovebird>> LOVEBIRD = Services.PLATFORM.registerMob(new MobSpec<>(
+			LOVEBIRD_ID, Lovebird::new, MobCategory.CREATURE, 0.4F, 0.7F, 0.5F, Lovebird::createAttributes,
+			SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING, LittleBird::checkSpawnRules, LOVEBIRD_SPAWNS));
+
 	public static final Supplier<Item> BUDGIE_SPAWN_EGG = Services.PLATFORM.register(Registries.ITEM, BUDGIE_EGG_KEY.identifier(),
 			() -> new SpawnEggItem(new Item.Properties().setId(BUDGIE_EGG_KEY).spawnEgg(BUDGIE.get())));
 
 	public static final Supplier<Item> COCKATIEL_SPAWN_EGG = Services.PLATFORM.register(Registries.ITEM, COCKATIEL_EGG_KEY.identifier(),
 			() -> new SpawnEggItem(new Item.Properties().setId(COCKATIEL_EGG_KEY).spawnEgg(COCKATIEL.get())));
+
+	public static final Supplier<Item> LOVEBIRD_SPAWN_EGG = Services.PLATFORM.register(Registries.ITEM, LOVEBIRD_EGG_KEY.identifier(),
+			() -> new SpawnEggItem(new Item.Properties().setId(LOVEBIRD_EGG_KEY).spawnEgg(LOVEBIRD.get())));
 
 	private Birds() {
 	}
@@ -59,5 +73,6 @@ public final class Birds {
 		ResourceKey<CreativeModeTab> eggs = ResourceKey.create(Registries.CREATIVE_MODE_TAB, Identifier.withDefaultNamespace("spawn_eggs"));
 		Services.PLATFORM.addToCreativeTab(eggs, BUDGIE_SPAWN_EGG);
 		Services.PLATFORM.addToCreativeTab(eggs, COCKATIEL_SPAWN_EGG);
+		Services.PLATFORM.addToCreativeTab(eggs, LOVEBIRD_SPAWN_EGG);
 	}
 }

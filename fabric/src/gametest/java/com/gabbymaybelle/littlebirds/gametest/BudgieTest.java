@@ -3,6 +3,7 @@ package com.gabbymaybelle.littlebirds.gametest;
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.Budgie;
 import com.gabbymaybelle.littlebirds.Cockatiel;
+import com.gabbymaybelle.littlebirds.Lovebird;
 import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
@@ -74,6 +75,7 @@ public class BudgieTest implements FabricClientGameTest {
 			greeting(ctx, server, home);
 			shoulder(ctx, server, home);
 			cockatiel(ctx, server, home);
+			lovebirds(ctx, server, home);
 			spawnRules(server, home.offset(6, 0, 6));
 			biomes(server);
 		}
@@ -101,7 +103,8 @@ public class BudgieTest implements FabricClientGameTest {
 	 */
 	private void sounds(ClientGameTestContext ctx) {
 		for (var sound : List.of(Sounds.BUDGIE_CHATTER, Sounds.BUDGIE_GREETING, Sounds.BUDGIE_SETTLE,
-				Sounds.COCKATIEL_CHATTER, Sounds.COCKATIEL_GREETING, Sounds.COCKATIEL_SETTLE)) {
+				Sounds.COCKATIEL_CHATTER, Sounds.COCKATIEL_GREETING, Sounds.COCKATIEL_SETTLE,
+				Sounds.LOVEBIRD_CHATTER, Sounds.LOVEBIRD_GREETING, Sounds.LOVEBIRD_SETTLE)) {
 			var id = sound.get().location();
 			String found = ctx.computeOnClient(mc -> {
 				var event = mc.getSoundManager().getSoundEvent(id);
@@ -465,6 +468,80 @@ public class BudgieTest implements FabricClientGameTest {
 		server.runCommand("kill @e[type=little_birds:cockatiel]");
 		server.runCommand("kill @e[type=little_birds:budgie]");
 		server.runCommand("kill @e[type=minecraft:parrot]");
+	}
+
+	/**
+	 * Lovebirds: two put down near each other pair up on their own; both tamed, they call the same
+	 * perch home and at night sit on it side by side, one either side of the middle of the bar;
+	 * one on its own keeps the middle. Savannas spawn them in twos.
+	 */
+	private void lovebirds(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		check(BuiltInRegistries.ENTITY_TYPE.containsKey(Birds.LOVEBIRD_ID), "the lovebird is registered");
+		check(Birds.LOVEBIRD_SPAWN_EGG.get() instanceof SpawnEggItem, "the lovebird spawn egg is registered");
+		BlockPos perch = home.offset(3, 0, 3);
+		List<Lovebird> pair = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+			level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.NORTH));
+			level.setBlockAndUpdate(perch.above(), Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch.above(2), Blocks.AIR.defaultBlockState());
+			List<Lovebird> birds = new ArrayList<>();
+			for (int i = 0; i < 2; i++) {
+				Lovebird b = Birds.LOVEBIRD.get().create(level, EntitySpawnReason.COMMAND);
+				b.snapTo(home.getX() + 1.5 + i, home.getY(), home.getZ() + 1.5, 0, 0);
+				b.setColour(i == 0 ? Lovebird.Colour.PEACH : Lovebird.Colour.FISCHER);
+				b.tame(player(s));
+				level.addFreshEntity(b);
+				birds.add(b);
+			}
+			return birds;
+		});
+		Lovebird a = pair.get(0), b = pair.get(1);
+		check(waitFor(ctx, server, 400, s -> a.getPartner() == b && b.getPartner() == a), "two lovebirds put down together pair up");
+		check(a.getColour() == Lovebird.Colour.PEACH && b.getColour() == Lovebird.Colour.FISCHER, "each keeps its own colour");
+		check(waitFor(ctx, server, 600, s -> perch.equals(a.getPerch()) && perch.equals(b.getPerch())), "a pair calls the same perch home");
+		server.runCommand("time set night");
+		check(waitFor(ctx, server, 1200, s -> a.isPerched() && b.isPerched()), "at night both sit on the perch");
+		double apart = server.computeOnServer(s -> a.position().distanceTo(b.position()));
+		check(apart > 0.3 && apart < 0.5, "they sit side by side, either side of the middle (apart " + String.format("%.2f", apart) + ")");
+		// A look at the pair, side on from the south.
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), perch.getX() + 0.5, perch.getY(), perch.getZ() + 2.5, java.util.Set.of(), 180.0F, 10.0F, false));
+		ctx.waitTicks(10);
+		ctx.takeScreenshot("lovebirds");
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
+		server.runCommand("time set day");
+		int savanna = server.computeOnServer(s -> {
+			Biome biome = s.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.SAVANNA).value();
+			var entry = biome.getAttributes().get(EnvironmentAttributes.NATURAL_MOB_SPAWNS);
+			MobSpawnSettings spawns = (MobSpawnSettings) entry.argument();
+			return spawns.getMobsToSpawn(MobCategory.CREATURE).unwrap().stream()
+					.filter(w -> w.value().type() == Birds.LOVEBIRD.get()).mapToInt(w -> w.weight()).sum();
+		});
+		check(savanna == 6, "savannas spawn lovebirds at weight 6 (got " + savanna + ")");
+		server.runCommand("kill @e[type=little_birds:lovebird]");
+		ctx.waitTicks(80);
+		// The three colours in a row by day: side on from the west, then face on from the south.
+		server.runOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Lovebird.Colour[] colours = Lovebird.Colour.COLOURS;
+			for (int i = 0; i < colours.length; i++) {
+				Lovebird shown = Birds.LOVEBIRD.get().create(level, EntitySpawnReason.COMMAND);
+				shown.snapTo(home.getX() + 3.5, home.getY(), home.getZ() - 1.0 + i * 1.2, 0, 0);
+				shown.setColour(colours[i]);
+				shown.setNoAi(true);
+				shown.setOnGround(true);
+				level.addFreshEntity(shown);
+			}
+			player(s).teleportTo(level, home.getX() + 0.5, home.getY(), home.getZ() + 0.2, java.util.Set.of(), -90.0F, 15.0F, false);
+		});
+		ctx.waitTicks(10);
+		ctx.takeScreenshot("lovebird_colours_side");
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
+		server.runCommand("kill @e[type=little_birds:lovebird]");
+		server.runOnServer(s -> {
+			s.overworld().setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+			s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		});
 	}
 
 	private static void usePerch(TestServerContext server, BlockPos perch) {

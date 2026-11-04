@@ -3,6 +3,7 @@ package com.gabbymaybelle.littlebirds.gametest.neoforge;
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.Budgie;
 import com.gabbymaybelle.littlebirds.Cockatiel;
+import com.gabbymaybelle.littlebirds.Lovebird;
 import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
@@ -393,6 +394,74 @@ final class BudgieChecks {
 			level.getServer().getPlayerList().remove(player);
 		}
 		helper.succeed();
+	}
+
+	/** Two lovebirds put down together pair up, both tamed they call one perch home and sit on it either side of the middle; savannas spawn them in twos. */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: taming needs a player
+	static void lovebirds(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos perch = helper.absolutePos(new BlockPos(5, 1, 3));
+		BlockPos at = helper.absolutePos(new BlockPos(2, 1, 3));
+		helper.setTime(18000);
+		level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+		level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.WEST));
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Lovebird a = Birds.LOVEBIRD.get().create(level, EntitySpawnReason.COMMAND);
+		Lovebird b = Birds.LOVEBIRD.get().create(level, EntitySpawnReason.COMMAND);
+		a.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0, 0);
+		b.snapTo(at.getX() + 1.5, at.getY(), at.getZ() + 0.5, 0, 0);
+		a.setColour(Lovebird.Colour.BLUE);
+		a.tame(player);
+		b.tame(player);
+		level.addFreshEntity(a);
+		level.addFreshEntity(b);
+		int savanna = weightOf(level, Biomes.SAVANNA, Birds.LOVEBIRD.get());
+		int[] phase = {0};
+		int[] ticks = {0};
+		Runnable tidy = () -> {
+			a.discard();
+			b.discard();
+			level.getServer().getPlayerList().remove(player);
+			level.setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		};
+		helper.onEachTick(() -> {
+			ticks[0]++;
+			if (ticks[0] % 200 == 0) {
+				System.out.println("[little_birds_gametest] lovebirds: tick " + ticks[0] + ", phase " + phase[0] + ", paired " + (a.getPartner() == b) + ", perches " + a.getPerch() + " / " + b.getPerch() + ", perched " + a.isPerched() + "/" + b.isPerched());
+			}
+			switch (phase[0]) {
+				case 0 -> {
+					if (a.getPartner() == b && b.getPartner() == a) {
+						System.out.println("[little_birds_gametest] lovebirds: paired after " + ticks[0] + " ticks");
+						phase[0] = 1;
+					}
+				}
+				case 1 -> {
+					if (perch.equals(a.getPerch()) && perch.equals(b.getPerch())) {
+						System.out.println("[little_birds_gametest] lovebirds: both call the perch home after " + ticks[0] + " ticks");
+						phase[0] = 2;
+					}
+				}
+				case 2 -> {
+					if (a.isPerched() && b.isPerched()) {
+						double apart = a.position().distanceTo(b.position());
+						System.out.println("[little_birds_gametest] lovebirds: both perched after " + ticks[0] + " ticks, apart " + String.format("%.2f", apart) + ", savanna weight " + savanna + ", colour " + a.getColour());
+						try {
+							helper.assertTrue(apart > 0.3 && apart < 0.5, "a pair should sit either side of the middle (apart " + apart + ")");
+							helper.assertTrue(a.getColour() == Lovebird.Colour.BLUE, "a lovebird should keep its colour (got " + a.getColour() + ")");
+							helper.assertTrue(savanna == 6, "savannas should spawn lovebirds at weight 6 (got " + savanna + ")");
+						} finally {
+							tidy.run();
+						}
+						phase[0] = 3;
+						helper.succeed();
+					}
+				}
+				default -> {
+				}
+			}
+		});
 	}
 
 	/** Wild budgies may appear on grass in daylight, not on stone, and never while natural spawning is off or the chance is 0. */

@@ -7,6 +7,10 @@
   says hello or takes off, and a whistle for a voice, cut from a recording of a real cockatiel.
   Tamed with seeds like a budgie; the perch, the greeting, the shoulder and the call all work the
   same. Wild cockatiels live in savannas, in pairs and threes.
+- The lovebird: a small, round little bird in three colours (peach-faced, Fischer's, the blue)
+  that lives in a pair. Two lovebirds that meet pair up for good, keep together, call the same
+  perch home and sit on it side by side. Their chirps are cut from recordings of real lovebirds.
+  Wild lovebirds live in savannas, always two at a time.
 
 ## 0.1.0: Someone small is glad you're home
 

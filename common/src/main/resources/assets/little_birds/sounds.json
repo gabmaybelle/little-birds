@@ -50,5 +50,31 @@
 			"little_birds:cockatiel/settle2",
 			"little_birds:cockatiel/settle3"
 		]
+	},
+	"lovebird_chatter": {
+		"subtitle": "subtitles.little_birds.lovebird_chatter",
+		"sounds": [
+			"little_birds:lovebird/chatter1",
+			"little_birds:lovebird/chatter2",
+			"little_birds:lovebird/chatter3",
+			"little_birds:lovebird/chatter4",
+			"little_birds:lovebird/chatter5"
+		]
+	},
+	"lovebird_greeting": {
+		"subtitle": "subtitles.little_birds.lovebird_greeting",
+		"sounds": [
+			"little_birds:lovebird/greeting1",
+			"little_birds:lovebird/greeting2",
+			"little_birds:lovebird/greeting3"
+		]
+	},
+	"lovebird_settle": {
+		"subtitle": "subtitles.little_birds.lovebird_settle",
+		"sounds": [
+			"little_birds:lovebird/settle1",
+			"little_birds:lovebird/settle2",
+			"little_birds:lovebird/settle3"
+		]
 	}
 }

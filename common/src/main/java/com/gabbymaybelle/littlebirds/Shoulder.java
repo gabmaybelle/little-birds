@@ -61,7 +61,7 @@ public final class Shoulder {
 		if (!level.isClientSide()) {
 			bird.setOnShoulder(false);
 			if (level.getBlockState(pos).getBlock() instanceof PerchBlock) {
-				Vec3 seat = PerchBlock.seat(pos);
+				Vec3 seat = PerchBlock.seatFor(bird, pos);
 				bird.snapTo(seat.x, seat.y, seat.z, bird.getYRot(), 0.0F);
 				bird.callTo(pos);
 			} else {

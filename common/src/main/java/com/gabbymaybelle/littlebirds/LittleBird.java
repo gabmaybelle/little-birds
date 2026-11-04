@@ -129,6 +129,16 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 	/** The soft sound as it settles on its perch for the night. */
 	public abstract SoundEvent settleSound();
 
+	/** Where along the bar it sits, in blocks from the middle: 0 for a bird on its own; a pair sits either side. */
+	public double seatOffset() {
+		return 0.0;
+	}
+
+	/** Whether this bird and another may call the same perch home (a lovebird and its partner). */
+	public boolean sharesPerchWith(LittleBird other) {
+		return false;
+	}
+
 	@Override
 	public @Nullable SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason reason, @Nullable SpawnGroupData groupData) {
 		this.setVariant(level.getRandom().nextInt(this.variantCount()));

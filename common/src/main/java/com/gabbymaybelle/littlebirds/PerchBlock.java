@@ -50,6 +50,20 @@ public class PerchBlock extends HorizontalDirectionalBlock {
 		return Vec3.atBottomCenterOf(pos).add(0.0, SEAT_HEIGHT, 0.0);
 	}
 
+	/** Where a bird sits on this perch, {@code along} blocks from the middle along the bar (a pair sits either side). */
+	public static Vec3 seat(BlockState state, BlockPos pos, double along) {
+		Vec3 middle = seat(pos);
+		if (along == 0.0 || !(state.getBlock() instanceof PerchBlock)) {
+			return middle;
+		}
+		return state.getValue(FACING).getAxis() == Direction.Axis.Z ? middle.add(along, 0.0, 0.0) : middle.add(0.0, 0.0, along);
+	}
+
+	/** Where this bird sits on the perch at {@code pos}, its seat offset along the bar included. */
+	public static Vec3 seatFor(LittleBird bird, BlockPos pos) {
+		return seat(bird.level().getBlockState(pos), pos, bird.seatOffset());
+	}
+
 	/** The way a bird on this perch faces: the way the perch faces (towards whoever placed it). */
 	public static float seatYaw(BlockState state) {
 		return state.getValue(FACING).toYRot();
@@ -70,7 +84,7 @@ public class PerchBlock extends HorizontalDirectionalBlock {
 		}
 		LittleBird bird = Shoulder.riding(player);
 		if (bird != null) {
-			Vec3 seat = seat(pos);
+			Vec3 seat = seatFor(bird, pos);
 			bird.snapTo(seat.x, seat.y, seat.z, bird.getYRot(), 0.0F);
 			bird.callTo(pos);
 			return InteractionResult.SUCCESS;

@@ -16,7 +16,7 @@ jungle edges, with a settings file to turn that off. More birds to come.
 
 Minecraft 26.3, Fabric and NeoForge. Made by Gabby. The birds' voices are cut from public-domain
 (CC0) recordings of real birds on Freesound: budgies by much_username, tomattka and squashy555,
-a cockatiel by Tairblenn.
+a cockatiel by Tairblenn, lovebirds by 5ro4, bowlingballout and xv920.
 
 ## Building
 

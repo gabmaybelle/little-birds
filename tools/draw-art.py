@@ -177,6 +177,50 @@ def cockatiel(name, p):
 	img.save(TEX / "entity/cockatiel" / f"cockatiel_{name}.png")
 
 
+# Lovebird: B body, F face, R rump (the blue patch above the tail), T tail, E eye, L feet, K beak, Y breast.
+LOVEBIRD = {
+	"peach": dict(B="#6cc24a", F="#f29a6a", Y="#9edb6e", R="#4a8fd8", T="#3f9a3a", E="#141414", L="#9a9aa0", K="#e8d6a8"),
+	"fischer": dict(B="#5fbf4a", F="#f0772c", Y="#e8d04a", R="#3f6fd0", T="#3f9a3a", E="#141414", L="#9a9aa0", K="#d8402a"),
+	"blue": dict(B="#5c9ee0", F="#f4f6f8", Y="#9cc6ee", R="#3f6fd0", T="#3a74b8", E="#141414", L="#9a9aa0", K="#e8d6a8"),
+}
+
+
+def lovebird(name, p):
+	"""The lovebird's texture in LovebirdModel's layout (32x32): head 3x3x3 at 0,0; beak top 1x1x1 at 12,0;
+	beak tip at 16,0; body 3x5x3 at 0,7; wing 1x4x3 at 12,7; tail 2x3x1 at 20,7; leg 1x2x1 at 12,14."""
+	img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+
+	head = Box(img, 0, 0, 3, 3, 3)
+	head.fill(p["B"])
+	# The face colour covers the front and the front half of each side; the eye sits high on the side.
+	head.paint("front", lambda x, y, w, h: p["F"])
+	for side in ("left", "right"):
+		head.paint(side, lambda x, y, w, h: p["E"] if (x, y) == (1, 0) else (p["F"] if x <= 1 else p["B"]))
+	head.paint("top", lambda x, y, w, h: p["F"] if y == 0 else p["B"])
+
+	Box(img, 12, 0, 1, 1, 1).fill(p["K"])
+	Box(img, 16, 0, 1, 1, 1).fill(shade(p["K"], 0.85))
+
+	body = Box(img, 0, 7, 3, 5, 3)
+	body.fill(p["B"])
+	# A lighter breast, and the rump patch low on the back.
+	body.paint("front", lambda x, y, w, h: p["Y"] if y < 3 else p["B"])
+	body.paint("back", lambda x, y, w, h: p["R"] if y >= 3 else p["B"])
+
+	wing = Box(img, 12, 7, 1, 4, 3)
+	wing.fill(shade(p["B"], 0.9))
+	for side in ("left", "right"):
+		wing.paint(side, lambda x, y, w, h: shade(p["B"], 0.9 if y < 3 else 0.78))
+
+	tail = Box(img, 20, 7, 2, 3, 1)
+	tail.fill(p["T"])
+
+	Box(img, 12, 14, 1, 2, 1).fill(p["L"])
+
+	(TEX / "entity/lovebird").mkdir(parents=True, exist_ok=True)
+	img.save(TEX / "entity/lovebird" / f"lovebird_{name}.png")
+
+
 EGG = """
 ................
 ......oooo......
@@ -250,6 +294,9 @@ if __name__ == "__main__":
 	for name, palette in COCKATIEL.items():
 		cockatiel(name, palette)
 	egg("budgie", {"o": "#2e2119", "B": "#7fcf3a", "b": "#4f9a2a", "Y": "#f4e45a"})
+	for name, palette in LOVEBIRD.items():
+		lovebird(name, palette)
 	egg("cockatiel", {"o": "#2e2119", "B": "#8d8d93", "b": "#6f6f76", "Y": "#f0dc5a"})
+	egg("lovebird", {"o": "#2e2119", "B": "#6cc24a", "b": "#3f9a3a", "Y": "#f29a6a"})
 	perch()
 	print("art written")

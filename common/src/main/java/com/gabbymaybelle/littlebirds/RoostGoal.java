@@ -78,7 +78,7 @@ public class RoostGoal extends Goal {
 		if (perch == null) {
 			return;
 		}
-		Vec3 seat = PerchBlock.seat(perch);
+		Vec3 seat = PerchBlock.seatFor(this.bird, perch);
 		Vec3 here = this.bird.position();
 		double dx = seat.x - here.x, dz = seat.z - here.z, dy = here.y - seat.y;
 		double across = dx * dx + dz * dz;
@@ -136,7 +136,7 @@ public class RoostGoal extends Goal {
 
 	private void settle(BlockPos perch) {
 		this.landed = true;
-		Vec3 seat = PerchBlock.seat(perch);
+		Vec3 seat = PerchBlock.seatFor(this.bird, perch);
 		this.bird.setPos(seat.x, seat.y, seat.z);
 		this.bird.setOnGround(true);
 		BlockState state = this.bird.level().getBlockState(perch);
