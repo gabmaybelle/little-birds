@@ -5,13 +5,16 @@ import com.gabbymaybelle.littlebirds.Budgie;
 import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
+import com.gabbymaybelle.littlebirds.Sounds;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.CameraType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -22,6 +25,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.MobCategory;
@@ -35,6 +39,7 @@ import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -58,11 +63,14 @@ public class BudgieTest implements FabricClientGameTest {
 			// Keep the screenshots clean: no command chatter, and the taming advancement granted now rather than popping up later.
 			server.runCommand("gamerule sendCommandFeedback false");
 			server.runCommand("gamerule announceAdvancements false");
+			server.runCommand("gamerule showDeathMessages false");
 			server.runCommand("advancement grant @a only minecraft:husbandry/tame_an_animal");
 			BlockPos home = server.computeOnServer(s -> player(s).blockPosition());
 			spawn(ctx, server, home);
 			taming(ctx, server, home);
 			perch(ctx, server, home);
+			greeting(ctx, server, home);
+			shoulder(ctx, server, home);
 			spawnRules(server, home.offset(6, 0, 6));
 			biomes(server);
 		}
@@ -211,6 +219,7 @@ public class BudgieTest implements FabricClientGameTest {
 			float yaw = server.computeOnServer(s -> Mth.wrapDegrees(bird.getYRot() - Direction.WEST.toYRot()));
 			check(Math.abs(yaw) < 5.0F, "the budgie faces the way the perch faces (off by " + yaw + " degrees)");
 			check(server.computeOnServer(s -> bird.isRoosting()), "at night, on its perch, the budgie is asleep");
+			check(server.computeOnServer(s -> bird.getAmbientSound() == null), "asleep, it is quiet");
 			// A look at it side on, from two blocks south of the perch, so the sleeping pose shows.
 			server.runOnServer(s -> player(s).teleportTo(s.overworld(), perch.getX() + 0.5, perch.getY(), perch.getZ() + 2.5, java.util.Set.of(), 180.0F, 10.0F, false));
 			ctx.waitTicks(10);
@@ -223,6 +232,147 @@ public class BudgieTest implements FabricClientGameTest {
 		check(server.computeOnServer(s -> !bird.hasPerch()), "with the perch broken, the budgie has no home");
 		server.runCommand("kill @e[type=little_birds:budgie]");
 		server.runOnServer(s -> s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState()));
+	}
+
+	/**
+	 * The greeting: a sitting budgie says nothing while its owner is away; when the owner comes
+	 * back within reach after an hour of the day clock, it says hello once; a quick in-and-out
+	 * earns nothing more. Asleep on its perch it is quiet; awake it chatters.
+	 */
+	private void greeting(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		Budgie bird = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 1.5, home.getY(), home.getZ() + 1.5, 0, 0);
+			b.tame(player(s));
+			b.setOrderedToSit(true);
+			level.addFreshEntity(b);
+			return b;
+		});
+		ctx.waitTicks(15);
+		check(bird.greetings == 0, "a budgie just tamed has nothing to say yet");
+		check(server.computeOnServer(s -> bird.getAmbientSound() == Sounds.BUDGIE_CHATTER.get()), "awake, the budgie chatters");
+		teleport(server, home.offset(40, 0, 0));
+		server.runCommand("time add 1200");
+		ctx.waitTicks(15);
+		check(bird.greetings == 0, "while its owner is away it stays quiet");
+		teleport(server, home);
+		ctx.waitTicks(30);
+		check(bird.greetings == 1, "when its owner comes back after an hour away, the budgie says hello (greetings: " + bird.greetings + ")");
+		teleport(server, home.offset(40, 0, 0));
+		ctx.waitTicks(15);
+		teleport(server, home);
+		ctx.waitTicks(30);
+		check(bird.greetings == 1, "a quick in-and-out earns no second greeting (greetings: " + bird.greetings + ")");
+		server.runCommand("kill @e[type=little_birds:budgie]");
+	}
+
+	/**
+	 * The shoulder: a sneak-use with an empty hand puts a tamed budgie on its owner's shoulder,
+	 * where it sits at shoulder height and stays through a fall; a second sneak-use sets it down,
+	 * as does a sneak-use on a block (it hops down onto it) or a use of a perch (it sits on the
+	 * perch). Using a perch with no bird on the shoulder calls the nearest budgie to it.
+	 */
+	private void shoulder(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		BlockPos perch = home.offset(-3, 0, 3);
+		Budgie first = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+			level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.NORTH));
+			level.setBlockAndUpdate(perch.above(), Blocks.AIR.defaultBlockState());
+			Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 1.5, home.getY(), home.getZ() + 0.5, 0, 0);
+			b.tame(player(s));
+			level.addFreshEntity(b);
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+			player(s).setShiftKeyDown(true);
+			return b;
+		});
+		ctx.waitTicks(5);
+		server.runOnServer(s -> first.mobInteract(player(s), InteractionHand.MAIN_HAND));
+		ctx.waitTicks(5);
+		check(first.isOnShoulder(), "a sneak-use with an empty hand puts the budgie on its owner's shoulder");
+		double up = server.computeOnServer(s -> first.getY() - player(s).getY());
+		double out = server.computeOnServer(s -> Math.hypot(first.getX() - player(s).getX(), first.getZ() - player(s).getZ()));
+		check(up > 1.1 && up < 1.6 && out > 0.2 && out < 0.6, "it sits at shoulder height, out to one side (up " + String.format("%.2f", up) + ", out " + String.format("%.2f", out) + ")");
+		// A look at it from the front, in third person (on your own shoulder it isn't drawn in first person).
+		ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT));
+		ctx.waitTicks(10);
+		ctx.takeScreenshot("budgie_shoulder");
+		ctx.runOnClient(mc -> mc.options.setCameraType(CameraType.FIRST_PERSON));
+		teleport(server, home.above(6));
+		ctx.waitTicks(40);
+		check(first.isOnShoulder(), "it stays on through a fall");
+		// Its owner goes to the Nether: the first turns up on the shoulder there, and comes back the same way.
+		server.runCommand("execute in minecraft:the_nether run tp @a 8.5 80.0 8.5");
+		ctx.waitTicks(40);
+		Budgie inNether = server.computeOnServer(s -> {
+			ServerLevel nether = s.getLevel(net.minecraft.world.level.Level.NETHER);
+			List<Budgie> birds = nether.getEntitiesOfClass(Budgie.class, player(s).getBoundingBox().inflate(3.0), b -> b.isOnShoulder());
+			return birds.isEmpty() ? null : birds.getFirst();
+		});
+		check(inNether != null, "through a portal to the Nether, the budgie comes along on the shoulder");
+		teleport(server, home);
+		ctx.waitTicks(40);
+		Budgie back = server.computeOnServer(s -> {
+			List<Budgie> birds = s.overworld().getEntitiesOfClass(Budgie.class, player(s).getBoundingBox().inflate(3.0), b -> b.isOnShoulder());
+			return birds.isEmpty() ? null : birds.getFirst();
+		});
+		check(back != null, "and back to the Overworld with its owner");
+		Budgie bird = back != null ? back : first;
+		server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
+		ctx.waitTicks(5);
+		check(!bird.isOnShoulder(), "a second sneak-use sets it down");
+		// Back on, then a sneak-use on the block two steps away: it hops down onto that block.
+		BlockPos step = home.offset(2, -1, 0);
+		server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
+		ctx.waitTicks(5);
+		InteractionResult result = server.computeOnServer(s -> UseBlockCallback.EVENT.invoker().interact(player(s), s.overworld(), InteractionHand.MAIN_HAND,
+				new BlockHitResult(Vec3.atCenterOf(step).add(0, 0.5, 0), Direction.UP, step, false)));
+		ctx.waitTicks(5);
+		check(result == InteractionResult.SUCCESS && !bird.isOnShoulder() && bird.position().distanceTo(Vec3.atBottomCenterOf(step.above())) < 1.5,
+				"a sneak-use on a block sets it down on that block");
+		// Back on, then a use of the perch: it sits on the perch and the perch is its home.
+		server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
+		ctx.waitTicks(5);
+		check(bird.isOnShoulder(), "it gets back on for the perch check");
+		server.runOnServer(s -> player(s).setShiftKeyDown(false));
+		usePerch(server, perch);
+		ctx.waitTicks(5);
+		check(!bird.isOnShoulder() && perch.equals(server.computeOnServer(s -> bird.getPerch())), "using the perch with a bird on the shoulder sets it down there, and the perch is its home");
+		check(waitFor(ctx, server, 300, s -> bird.isPerched()), "it settles on the perch");
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		ctx.waitTicks(5);
+		// A fresh bird six blocks away, no home yet: using the perch calls it over.
+		Budgie called = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(perch.getX() + 6.5, perch.getY(), perch.getZ() + 0.5, 0, 0);
+			b.tame(player(s));
+			level.addFreshEntity(b);
+			return b;
+		});
+		ctx.waitTicks(5);
+		usePerch(server, perch);
+		ctx.waitTicks(2);
+		check(perch.equals(server.computeOnServer(s -> called.getPerch())), "using the perch calls the nearest budgie: the perch is its home");
+		check(waitFor(ctx, server, 600, s -> called.isPerched()), "and it flies over and settles on it");
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		server.runOnServer(s -> {
+			s.overworld().setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+			s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		});
+	}
+
+	private static void usePerch(TestServerContext server, BlockPos perch) {
+		server.runOnServer(s -> {
+			ServerLevel level = s.overworld();
+			level.getBlockState(perch).useWithoutItem(level, player(s), new BlockHitResult(Vec3.atCenterOf(perch), Direction.UP, perch, false));
+		});
+	}
+
+	private static void teleport(TestServerContext server, BlockPos to) {
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), to.getX() + 0.5, to.getY(), to.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
 	}
 
 	/** Waits, in steps of ten ticks, until the condition holds on the server or the ticks run out. */

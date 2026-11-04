@@ -83,6 +83,14 @@ public class BudgieModel extends EntityModel<BudgieRenderState> {
 		this.head.xRot = state.xRot * Mth.DEG_TO_RAD;
 		this.head.yRot = state.yRot * Mth.DEG_TO_RAD;
 		float bob = state.flapAngle * 0.3F;
+		if (state.greeting > 0.0F) {
+			// Hello: quick head bobs and a flutter of the wings, for a second and a half.
+			float wave = Mth.sin(state.greeting * 0.9F);
+			this.head.y += Math.abs(wave) * 1.2F;
+			this.head.xRot += wave * 0.25F;
+			this.leftWing.zRot = -0.0873F - Math.abs(wave) * 0.5F;
+			this.rightWing.zRot = 0.0873F + Math.abs(wave) * 0.5F;
+		}
 		switch (state.pose) {
 			case STANDING -> {
 				// Little steps, and the head bobs along with them the way a walking budgie's does.
@@ -90,8 +98,10 @@ public class BudgieModel extends EntityModel<BudgieRenderState> {
 				this.leftLeg.xRot += step;
 				this.rightLeg.xRot -= step;
 				this.head.y += Math.abs(Mth.sin(state.walkAnimationPos * 0.6662F)) * 0.6F * state.walkAnimationSpeed;
-				this.leftWing.zRot = -0.0873F - state.flapAngle;
-				this.rightWing.zRot = 0.0873F + state.flapAngle;
+				if (state.greeting <= 0.0F) {
+					this.leftWing.zRot = -0.0873F - state.flapAngle;
+					this.rightWing.zRot = 0.0873F + state.flapAngle;
+				}
 			}
 			case FLYING -> {
 				// Wings beat out from the body; legs tuck back under the tail.
@@ -119,8 +129,10 @@ public class BudgieModel extends EntityModel<BudgieRenderState> {
 				this.tail.xRot += 0.3F;
 				this.leftWing.y += 1.4F;
 				this.rightWing.y += 1.4F;
-				this.leftWing.zRot = -0.0873F;
-				this.rightWing.zRot = 0.0873F;
+				if (state.greeting <= 0.0F) {
+					this.leftWing.zRot = -0.0873F;
+					this.rightWing.zRot = 0.0873F;
+				}
 				this.leftLeg.y += 1.4F;
 				this.rightLeg.y += 1.4F;
 				this.leftLeg.xRot += Mth.HALF_PI;

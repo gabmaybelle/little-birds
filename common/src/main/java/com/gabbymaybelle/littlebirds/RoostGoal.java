@@ -36,7 +36,7 @@ public class RoostGoal extends Goal {
 		if (perch == null || !this.free() || !this.nearHome(perch)) {
 			return false;
 		}
-		return this.bird.level().isDarkOutside() || this.bird.staysHome() || this.bird.getRandom().nextInt(DAYTIME_VISIT_CHANCE) == 0;
+		return this.bird.consumeCall() || this.bird.level().isDarkOutside() || this.bird.staysHome() || this.bird.getRandom().nextInt(DAYTIME_VISIT_CHANCE) == 0;
 	}
 
 	@Override
@@ -149,6 +149,10 @@ public class RoostGoal extends Goal {
 		this.bird.setDeltaMovement(Vec3.ZERO);
 		this.bird.setPerched(true);
 		this.bird.setInSittingPose(true);
+		if (this.bird.level().isDarkOutside()) {
+			// Settling in for the night: a soft murmur, then quiet until morning.
+			this.bird.playSound(Sounds.BUDGIE_SETTLE.get(), 0.6F, this.bird.getVoicePitch());
+		}
 	}
 
 	private void takeOff() {

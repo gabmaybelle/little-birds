@@ -38,6 +38,8 @@ public final class LittleBirdsGameTests {
 		FUNCTIONS.put("budgie_lives", BudgieChecks::lives);
 		FUNCTIONS.put("seeds_tame_a_budgie", BudgieChecks::tames);
 		FUNCTIONS.put("a_budgie_sleeps_on_its_perch", BudgieChecks::roosts);
+		FUNCTIONS.put("a_budgie_greets_its_owner", BudgieChecks::greets);
+		FUNCTIONS.put("a_budgie_rides_a_shoulder", BudgieChecks::shoulder);
 		FUNCTIONS.put("wild_budgies_follow_the_settings", BudgieChecks::spawnRules);
 		FUNCTIONS.put("savannas_and_jungles_spawn_budgies", BudgieChecks::biomes);
 	}
@@ -65,6 +67,8 @@ public final class LittleBirdsGameTests {
 		test(event, "budgie_lives", plain, EMPTY, 100);
 		test(event, "seeds_tame_a_budgie", plain, EMPTY, 40);
 		test(event, "a_budgie_sleeps_on_its_perch", plain, ROOM, 1600);
+		test(event, "a_budgie_greets_its_owner", plain, ROOM, 200);
+		test(event, "a_budgie_rides_a_shoulder", plain, ROOM, 1600);
 		test(event, "wild_budgies_follow_the_settings", plain, EMPTY, 20);
 		test(event, "savannas_and_jungles_spawn_budgies", plain, EMPTY, 20);
 	}

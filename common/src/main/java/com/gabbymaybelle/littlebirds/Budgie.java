@@ -5,6 +5,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -18,6 +19,8 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.AgeableMob;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityEvent;
+import net.minecraft.world.entity.EntityReference;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -28,6 +31,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.FlyingMoveControl;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
+import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomFlyingGoal;
@@ -42,6 +46,7 @@ import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.PathType;
+import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
@@ -74,6 +79,7 @@ public class Budgie extends ShoulderRidingEntity {
 
 	private static final EntityDataAccessor<Integer> DATA_COLOUR = SynchedEntityData.defineId(Budgie.class, EntityDataSerializers.INT);
 	private static final EntityDataAccessor<Boolean> DATA_PERCHED = SynchedEntityData.defineId(Budgie.class, EntityDataSerializers.BOOLEAN);
+	private static final EntityDataAccessor<Boolean> DATA_ON_SHOULDER = SynchedEntityData.defineId(Budgie.class, EntityDataSerializers.BOOLEAN);
 
 	/** How far from the perch its owner can be and still count as home; farther, and the bird stays rather than follows. */
 	public static final double HOME_RANGE = 16.0;
@@ -82,6 +88,25 @@ public class Budgie extends ShoulderRidingEntity {
 
 	/** The perch this bird calls home, if it has one. */
 	private @Nullable BlockPos perch;
+	/** Set when its owner calls it to its perch (uses the perch): the roost goal goes at once. */
+	private boolean called;
+
+	/** Where it sits on its owner: this far up from the feet and out to the right of the body's middle. */
+	public static final double SHOULDER_UP = 1.2;
+	public static final double SHOULDER_OUT = 0.42;
+
+	/** How near its owner has to come to count as home (blocks). */
+	public static final double GREETING_REACH = 8.0;
+	/** How long its owner has to have been away for a return to earn a greeting: an hour of the day clock. */
+	public static final long GREETING_AFTER = 1000L;
+	/** The entity event that tells clients to play the greeting bob. */
+	private static final byte GREET_EVENT = 69;
+	/** The day-clock time its owner was last within reach; -1 until it has an owner. */
+	private long lastSawOwner = -1L;
+	/** How many greetings it has given since it was loaded (for the tests). */
+	public int greetings;
+	/** Client side: ticks left of the greeting bob. */
+	public int greetTicks;
 
 	// The flap animation, as vanilla's parrot keeps it: the renderer reads these.
 	public float flap;
@@ -219,6 +244,158 @@ public class Budgie extends ShoulderRidingEntity {
 	public void aiStep() {
 		super.aiStep();
 		this.calculateFlapping();
+		if (this.greetTicks > 0) {
+			this.greetTicks--;
+		}
+		if (this.isOnShoulder()) {
+			this.followShoulder();
+		}
+	}
+
+	@Override
+	protected void customServerAiStep(ServerLevel level) {
+		super.customServerAiStep(level);
+		// On a shoulder nothing moves it but its owner; the look goals still turn its head.
+		this.goalSelector.setControlFlag(Goal.Flag.MOVE, !this.isOnShoulder());
+		if (this.isOnShoulder() && this.tickCount % 10 == 0 && !(this.getOwner() instanceof Player owner && owner.isAlive() && !owner.isSpectator())) {
+			ServerPlayer elsewhere = this.ownerInAnotherWorld(level);
+			if (elsewhere != null) {
+				// Its owner went through a portal: it goes too, straight onto the shoulder on the other side.
+				this.followThroughPortal(elsewhere);
+			} else {
+				// Its owner has gone (logged out, died): back on its own feet.
+				this.setOnShoulder(false);
+			}
+		}
+		if (this.tickCount % 10 == 0) {
+			this.watchForOwner(level);
+		}
+	}
+
+	/**
+	 * The shoulder, on both sides every tick: the bird is held at its owner's right shoulder,
+	 * facing the way the owner faces. It isn't a passenger (the game won't let anything ride a
+	 * player), so it saves and loads like any bird; the client places it the same way, which keeps
+	 * it on the shoulder between the server's updates.
+	 */
+	private void followShoulder() {
+		if (!(this.getOwner() instanceof Player owner)) {
+			return;
+		}
+		float yaw = owner.yBodyRot;
+		float rad = yaw * Mth.DEG_TO_RAD;
+		double x = owner.getX() - Mth.cos(rad) * SHOULDER_OUT;
+		double z = owner.getZ() - Mth.sin(rad) * SHOULDER_OUT;
+		this.setPos(x, owner.getY() + SHOULDER_UP, z);
+		this.setDeltaMovement(Vec3.ZERO);
+		this.setYRot(yaw);
+		this.setYBodyRot(yaw);
+		this.setYHeadRot(yaw);
+		this.setOnGround(true);
+	}
+
+	/** The owner, if online, alive and in another world than the bird. */
+	private @Nullable ServerPlayer ownerInAnotherWorld(ServerLevel level) {
+		EntityReference<LivingEntity> reference = this.getOwnerReference();
+		if (reference == null) {
+			return null;
+		}
+		ServerPlayer owner = level.getServer().getPlayerList().getPlayer(reference.getUUID());
+		return owner != null && owner.isAlive() && !owner.isSpectator() && owner.level() != level ? owner : null;
+	}
+
+	/** On a shoulder it doesn't take portals by itself (it would arrive before its owner); it goes when its owner has gone. */
+	@Override
+	public boolean canUsePortal(boolean ignorePassenger) {
+		return !this.isOnShoulder() && super.canUsePortal(ignorePassenger);
+	}
+
+	/** Its owner is in another world: the bird goes there too, straight onto the shoulder. */
+	public void followThroughPortal(ServerPlayer owner) {
+		ServerLevel there = (ServerLevel) owner.level();
+		float yaw = owner.yBodyRot;
+		float rad = yaw * Mth.DEG_TO_RAD;
+		Vec3 seat = new Vec3(owner.getX() - Mth.cos(rad) * SHOULDER_OUT, owner.getY() + SHOULDER_UP, owner.getZ() - Mth.sin(rad) * SHOULDER_OUT);
+		this.teleport(new TeleportTransition(there, seat, Vec3.ZERO, yaw, 0.0F, TeleportTransition.DO_NOTHING));
+	}
+
+	/** Whether the bird is on its owner's shoulder. */
+	public boolean isOnShoulder() {
+		return this.entityData.get(DATA_ON_SHOULDER);
+	}
+
+	/** Puts the bird on its owner's shoulder, or sets it down where it is. */
+	public void setOnShoulder(boolean on) {
+		this.entityData.set(DATA_ON_SHOULDER, on);
+		this.noPhysics = on;
+		this.setNoGravity(on);
+		if (on) {
+			this.getNavigation().stop();
+			this.setOrderedToSit(false);
+			this.setPerched(false);
+			this.setInSittingPose(true);
+		} else {
+			this.setInSittingPose(this.isOrderedToSit());
+		}
+	}
+
+	/**
+	 * The greeting: the bird keeps the day-clock time its owner was last within reach. When the
+	 * owner comes back within reach after an hour or more away, it chirps hello once and bobs.
+	 * A bird on its owner's shoulder is never away.
+	 */
+	private void watchForOwner(ServerLevel level) {
+		if (!this.isTame()) {
+			return;
+		}
+		LivingEntity owner = this.getOwner();
+		long now = level.getOverworldClockTime();
+		if (owner == null || (!this.isOnShoulder() && this.distanceToSqr(owner) > GREETING_REACH * GREETING_REACH)) {
+			if (this.lastSawOwner > now) {
+				this.lastSawOwner = now; // the clock was turned back
+			}
+			return;
+		}
+		if (this.lastSawOwner >= 0 && now - this.lastSawOwner >= GREETING_AFTER) {
+			this.greet();
+		}
+		this.lastSawOwner = now;
+	}
+
+	private void greet() {
+		this.greetings++;
+		this.playSound(Sounds.BUDGIE_GREETING.get(), 1.0F, this.getVoicePitch());
+		this.level().broadcastEntityEvent(this, GREET_EVENT);
+	}
+
+	@Override
+	public void handleEntityEvent(@EntityEvent.Value byte id) {
+		if (id == GREET_EVENT) {
+			this.greetTicks = 30;
+		} else {
+			super.handleEntityEvent(id);
+		}
+	}
+
+	@Override
+	public void tame(Player player) {
+		super.tame(player);
+		this.lastSawOwner = this.level().getOverworldClockTime();
+	}
+
+	/** Its owner calls it to a perch: that perch is home now, and it goes at once. */
+	public void callTo(BlockPos perch) {
+		this.setOnShoulder(false);
+		this.setPerch(perch);
+		this.called = true;
+		this.setOrderedToSit(false);
+	}
+
+	/** Whether it has been called and not yet gone; asking clears it. */
+	boolean consumeCall() {
+		boolean was = this.called;
+		this.called = false;
+		return was;
 	}
 
 	private void calculateFlapping() {
@@ -256,7 +433,18 @@ public class Budgie extends ShoulderRidingEntity {
 			}
 			return InteractionResult.SUCCESS;
 		}
-		if (!this.isFlying() && this.isTame() && this.isOwnedBy(player)) {
+		if (this.isTame() && this.isOwnedBy(player) && player.isShiftKeyDown() && stack.isEmpty()) {
+			// Sneak-use: onto the shoulder, or off it.
+			if (!this.level().isClientSide()) {
+				if (this.isOnShoulder()) {
+					this.setOnShoulder(false);
+				} else if (Shoulder.riding(player) == null) {
+					this.setOnShoulder(true);
+				}
+			}
+			return InteractionResult.SUCCESS;
+		}
+		if (!this.isFlying() && this.isTame() && this.isOwnedBy(player) && !this.isOnShoulder()) {
 			if (!this.level().isClientSide()) {
 				this.setOrderedToSit(!this.isOrderedToSit());
 			}
@@ -296,9 +484,10 @@ public class Budgie extends ShoulderRidingEntity {
 	protected void checkFallDamage(double y, boolean onGround, BlockState state, BlockPos pos) {
 	}
 
+	/** Chatter by day; quiet once it has settled on its perch for the night. */
 	@Override
 	public @Nullable SoundEvent getAmbientSound() {
-		return SoundEvents.PARROT_AMBIENT;
+		return this.isRoosting() ? null : Sounds.BUDGIE_CHATTER.get();
 	}
 
 	@Override
@@ -374,6 +563,7 @@ public class Budgie extends ShoulderRidingEntity {
 		super.defineSynchedData(data);
 		data.define(DATA_COLOUR, Colour.GREEN.ordinal());
 		data.define(DATA_PERCHED, false);
+		data.define(DATA_ON_SHOULDER, false);
 	}
 
 	@Override
@@ -383,6 +573,8 @@ public class Budgie extends ShoulderRidingEntity {
 		if (this.perch != null) {
 			output.store("Perch", BlockPos.CODEC, this.perch);
 		}
+		output.putLong("LastSawOwner", this.lastSawOwner);
+		output.putBoolean("OnShoulder", this.isOnShoulder());
 	}
 
 	@Override
@@ -390,6 +582,10 @@ public class Budgie extends ShoulderRidingEntity {
 		super.readAdditionalSaveData(input);
 		this.setColour(Colour.byId(input.getIntOr("Colour", 0)));
 		this.setPerch(input.read("Perch", BlockPos.CODEC).orElse(null));
+		this.lastSawOwner = input.getLongOr("LastSawOwner", -1L);
+		if (input.getBooleanOr("OnShoulder", false)) {
+			this.setOnShoulder(true);
+		}
 	}
 
 	public boolean isFlying() {

@@ -3,8 +3,11 @@ package com.gabbymaybelle.littlebirds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ScheduledTickAccess;
 import net.minecraft.world.level.block.Block;
@@ -12,8 +15,11 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import org.jspecify.annotations.Nullable;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -26,6 +32,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class PerchBlock extends HorizontalDirectionalBlock {
 	/** How far above the block's bottom a bird's feet sit: the top of the bar. */
 	public static final double SEAT_HEIGHT = 12.0 / 16.0;
+	/** How far away a budgie can be called from (blocks). */
+	public static final double CALL_REACH = 16.0;
 
 	private static final VoxelShape BASE_AND_POST = Shapes.or(Block.column(6.0, 0.0, 2.0), Block.column(2.0, 2.0, 10.0));
 	/** The bar runs along x when the perch faces north or south, along z when it faces east or west. */
@@ -45,6 +53,52 @@ public class PerchBlock extends HorizontalDirectionalBlock {
 	/** The way a bird on this perch faces: the way the perch faces (towards whoever placed it). */
 	public static float seatYaw(BlockState state) {
 		return state.getValue(FACING).toYRot();
+	}
+
+	/**
+	 * Using the perch with an empty hand: a budgie on the player's shoulder is set down on it, or
+	 * else the player's nearest budgie is called to it (it becomes that bird's home). A sneak-use
+	 * is handled before this by {@link Shoulder#trySetDown}.
+	 */
+	@Override
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
+		if (!player.getMainHandItem().isEmpty()) {
+			return InteractionResult.PASS;
+		}
+		if (level.isClientSide()) {
+			return InteractionResult.SUCCESS;
+		}
+		Budgie bird = Shoulder.riding(player);
+		if (bird != null) {
+			Vec3 seat = seat(pos);
+			bird.snapTo(seat.x, seat.y, seat.z, bird.getYRot(), 0.0F);
+			bird.callTo(pos);
+			return InteractionResult.SUCCESS;
+		}
+		bird = nearestBird(level, pos, player);
+		if (bird == null) {
+			return InteractionResult.PASS;
+		}
+		bird.callTo(pos);
+		return InteractionResult.SUCCESS;
+	}
+
+	/** The player's nearest tamed budgie within reach of the perch that isn't already sitting on it. */
+	private static @Nullable Budgie nearestBird(Level level, BlockPos pos, Player player) {
+		AABB around = new AABB(pos).inflate(CALL_REACH);
+		Budgie nearest = null;
+		double best = Double.MAX_VALUE;
+		for (Budgie bird : level.getEntitiesOfClass(Budgie.class, around, b -> b.isTame() && b.isOwnedBy(player) && !b.isOnShoulder())) {
+			if (bird.isPerched() && pos.equals(bird.getPerch())) {
+				continue;
+			}
+			double distance = bird.distanceToSqr(Vec3.atCenterOf(pos));
+			if (distance < best) {
+				best = distance;
+				nearest = bird;
+			}
+		}
+		return nearest;
 	}
 
 	@Override

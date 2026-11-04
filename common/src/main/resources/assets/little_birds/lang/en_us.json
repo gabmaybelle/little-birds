@@ -1,5 +1,8 @@
 {
 	"entity.little_birds.budgie": "Budgie",
 	"item.little_birds.budgie_spawn_egg": "Budgie Spawn Egg",
-	"block.little_birds.perch": "Perch"
+	"block.little_birds.perch": "Perch",
+	"subtitles.little_birds.budgie_chatter": "Budgie chatters",
+	"subtitles.little_birds.budgie_greeting": "Budgie chirps hello",
+	"subtitles.little_birds.budgie_settle": "Budgie settles down"
 }

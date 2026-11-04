@@ -22,6 +22,7 @@ public final class LittleBirds {
 		Settings.load();
 		Birds.register();
 		Perch.register();
+		Sounds.register();
 		LOGGER.info("Little Birds: ready on {}", Services.PLATFORM.name());
 	}
 

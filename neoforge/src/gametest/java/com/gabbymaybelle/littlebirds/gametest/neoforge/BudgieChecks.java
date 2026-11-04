@@ -5,6 +5,7 @@ import com.gabbymaybelle.littlebirds.Budgie;
 import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
+import com.gabbymaybelle.littlebirds.Sounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -28,7 +29,11 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 /**
  * The checks: the mod and its compat mods loaded; a budgie lives in the world with its attributes
@@ -180,6 +185,175 @@ final class BudgieChecks {
 				}
 				default -> {
 				}
+			}
+		});
+	}
+
+	/**
+	 * The greeting: a sitting budgie says nothing while its owner is away; when the owner comes
+	 * back within reach after an hour of the day clock, it says hello once; a quick in-and-out
+	 * earns nothing more. Awake it chatters.
+	 */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: the greeting needs an owner
+	static void greets(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos at = helper.absolutePos(new BlockPos(3, 1, 3));
+		BlockPos away = helper.absolutePos(new BlockPos(40, 1, 3));
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+		Budgie bird = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+		bird.snapTo(at.getX() + 1.5, at.getY(), at.getZ() + 0.5, 0, 0);
+		bird.tame(player);
+		bird.setOrderedToSit(true);
+		level.addFreshEntity(bird);
+		Runnable tidy = () -> {
+			bird.discard();
+			level.getServer().getPlayerList().remove(player);
+		};
+		helper.runAfterDelay(15, () -> {
+			try {
+				helper.assertTrue(bird.greetings == 0, "a budgie just tamed should have nothing to say yet");
+				helper.assertTrue(bird.getAmbientSound() == Sounds.BUDGIE_CHATTER.get(), "awake, the budgie should chatter");
+				player.setPos(away.getX() + 0.5, away.getY(), away.getZ() + 0.5);
+				helper.setTime(level.getOverworldClockTime() + 1200);
+			} catch (RuntimeException e) {
+				tidy.run();
+				throw e;
+			}
+		});
+		helper.runAfterDelay(30, () -> {
+			try {
+				helper.assertTrue(bird.greetings == 0, "while its owner is away it should stay quiet");
+				player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+			} catch (RuntimeException e) {
+				tidy.run();
+				throw e;
+			}
+		});
+		helper.runAfterDelay(60, () -> {
+			try {
+				helper.assertTrue(bird.greetings == 1, "when its owner comes back after an hour away, the budgie should say hello (greetings: " + bird.greetings + ")");
+				player.setPos(away.getX() + 0.5, away.getY(), away.getZ() + 0.5);
+			} catch (RuntimeException e) {
+				tidy.run();
+				throw e;
+			}
+		});
+		helper.runAfterDelay(75, () -> player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5));
+		helper.runAfterDelay(105, () -> {
+			try {
+				System.out.println("[little_birds_gametest] greeting: " + bird.greetings + " greeting(s) after one long absence and one quick in-and-out");
+				helper.assertTrue(bird.greetings == 1, "a quick in-and-out should earn no second greeting (greetings: " + bird.greetings + ")");
+			} finally {
+				tidy.run();
+			}
+			helper.succeed();
+		});
+	}
+
+	/**
+	 * The shoulder: a sneak-use with an empty hand puts a tamed budgie on its owner's shoulder at
+	 * shoulder height, where it stays through a fall; a second sneak-use sets it down, as does a
+	 * sneak-use on a block (it hops down onto it) or a use of a perch (it sits on the perch and
+	 * makes it home). Using a perch with no bird on the shoulder calls the nearest budgie to it.
+	 */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: a shoulder needs a player
+	static void shoulder(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos at = helper.absolutePos(new BlockPos(2, 1, 3));
+		BlockPos step = helper.absolutePos(new BlockPos(3, 0, 1));
+		BlockPos perch = helper.absolutePos(new BlockPos(5, 1, 3));
+		level.setBlockAndUpdate(step, Blocks.OAK_PLANKS.defaultBlockState());
+		level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+		level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.WEST));
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+		player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+		player.setShiftKeyDown(true);
+		Budgie bird = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+		bird.snapTo(at.getX() + 1.5, at.getY(), at.getZ() + 0.5, 0, 0);
+		bird.tame(player);
+		level.addFreshEntity(bird);
+		Budgie[] called = new Budgie[1];
+		Runnable tidy = () -> {
+			bird.discard();
+			if (called[0] != null) {
+				called[0].discard();
+			}
+			level.getServer().getPlayerList().remove(player);
+			level.setBlockAndUpdate(step, Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		};
+		java.util.function.Consumer<Runnable> step1 = r -> {
+			try {
+				r.run();
+			} catch (RuntimeException e) {
+				tidy.run();
+				throw e;
+			}
+		};
+		helper.runAfterDelay(5, () -> step1.accept(() -> bird.mobInteract(player, InteractionHand.MAIN_HAND)));
+		helper.runAfterDelay(10, () -> step1.accept(() -> {
+			helper.assertTrue(bird.isOnShoulder(), "a sneak-use with an empty hand should put the budgie on its owner's shoulder");
+			double up = bird.getY() - player.getY();
+			double out = Math.hypot(bird.getX() - player.getX(), bird.getZ() - player.getZ());
+			System.out.println("[little_birds_gametest] shoulder: riding, up " + String.format("%.2f", up) + ", out " + String.format("%.2f", out));
+			helper.assertTrue(up > 1.1 && up < 1.6 && out > 0.2 && out < 0.6, "it should sit at shoulder height, out to one side (up " + up + ", out " + out + ")");
+			player.setPos(at.getX() + 0.5, at.getY() + 6, at.getZ() + 0.5);
+		}));
+		helper.runAfterDelay(50, () -> step1.accept(() -> {
+			helper.assertTrue(bird.isOnShoulder(), "it should stay on through a fall");
+			bird.mobInteract(player, InteractionHand.MAIN_HAND);
+		}));
+		helper.runAfterDelay(55, () -> step1.accept(() -> {
+			helper.assertFalse(bird.isOnShoulder(), "a second sneak-use should set it down");
+			bird.mobInteract(player, InteractionHand.MAIN_HAND);
+		}));
+		helper.runAfterDelay(60, () -> step1.accept(() -> {
+			helper.assertTrue(bird.isOnShoulder(), "it should get back on for the block check");
+			PlayerInteractEvent.RightClickBlock event = new PlayerInteractEvent.RightClickBlock(player, InteractionHand.MAIN_HAND, step,
+					new BlockHitResult(Vec3.atCenterOf(step).add(0, 0.5, 0), Direction.UP, step, false));
+			NeoForge.EVENT_BUS.post(event);
+			helper.assertTrue(event.isCanceled(), "a sneak-use on a block should be taken by the mod");
+		}));
+		helper.runAfterDelay(65, () -> step1.accept(() -> {
+			double off = bird.position().distanceTo(Vec3.atBottomCenterOf(step.above()));
+			System.out.println("[little_birds_gametest] shoulder: set down " + String.format("%.2f", off) + " from the block");
+			helper.assertTrue(!bird.isOnShoulder() && off < 1.5, "a sneak-use on a block should set it down on that block (off by " + off + ")");
+			bird.mobInteract(player, InteractionHand.MAIN_HAND);
+		}));
+		int[] settled = {-1};
+		helper.runAfterDelay(70, () -> step1.accept(() -> {
+			helper.assertTrue(bird.isOnShoulder(), "it should get back on for the perch check");
+			player.setShiftKeyDown(false);
+			level.getBlockState(perch).useWithoutItem(level, player, new BlockHitResult(Vec3.atCenterOf(perch), Direction.UP, perch, false));
+			helper.assertTrue(!bird.isOnShoulder() && perch.equals(bird.getPerch()), "using the perch with a bird on the shoulder should set it down there, as its home");
+			settled[0] = 0;
+		}));
+		// The per-tick watch is registered now (adding it from inside a later step trips the framework), and waits for the perch step.
+		helper.onEachTick(() -> {
+			if (settled[0] < 0) {
+				return;
+			}
+			if (settled[0] == 0 && bird.isPerched()) {
+				settled[0] = 1;
+				System.out.println("[little_birds_gametest] shoulder: settled on the perch");
+				bird.discard();
+				Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+				b.snapTo(perch.getX() - 3.5, perch.getY(), perch.getZ() + 0.5, 0, 0);
+				b.tame(player);
+				level.addFreshEntity(b);
+				called[0] = b;
+			} else if (settled[0] == 1 && called[0] != null && called[0].tickCount > 5) {
+				settled[0] = 2;
+				level.getBlockState(perch).useWithoutItem(level, player, new BlockHitResult(Vec3.atCenterOf(perch), Direction.UP, perch, false));
+				step1.accept(() -> helper.assertTrue(perch.equals(called[0].getPerch()), "using the perch should call the nearest budgie: the perch becomes its home"));
+			} else if (settled[0] == 2 && called[0].isPerched()) {
+				settled[0] = 3;
+				System.out.println("[little_birds_gametest] shoulder: the called budgie settled on the perch");
+				tidy.run();
+				helper.succeed();
 			}
 		});
 	}
