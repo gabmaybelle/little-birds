@@ -24,5 +24,31 @@
 			"little_birds:budgie/settle2",
 			"little_birds:budgie/settle3"
 		]
+	},
+	"cockatiel_chatter": {
+		"subtitle": "subtitles.little_birds.cockatiel_chatter",
+		"sounds": [
+			"little_birds:cockatiel/chatter1",
+			"little_birds:cockatiel/chatter2",
+			"little_birds:cockatiel/chatter3",
+			"little_birds:cockatiel/chatter4",
+			"little_birds:cockatiel/chatter5"
+		]
+	},
+	"cockatiel_greeting": {
+		"subtitle": "subtitles.little_birds.cockatiel_greeting",
+		"sounds": [
+			"little_birds:cockatiel/greeting1",
+			"little_birds:cockatiel/greeting2",
+			"little_birds:cockatiel/greeting3"
+		]
+	},
+	"cockatiel_settle": {
+		"subtitle": "subtitles.little_birds.cockatiel_settle",
+		"sounds": [
+			"little_birds:cockatiel/settle1",
+			"little_birds:cockatiel/settle2",
+			"little_birds:cockatiel/settle3"
+		]
 	}
 }

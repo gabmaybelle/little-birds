@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * A budgie on a shoulder. Vanilla's shoulder slots only carry a parrot's colour, and nothing may
  * ride a player, so a budgie on a shoulder is a state of its own: the bird is held at its owner's
- * shoulder every tick ({@link Budgie#isOnShoulder}). It gets on when its owner sneak-uses it with
+ * shoulder every tick ({@link LittleBird#isOnShoulder}). It gets on when its owner sneak-uses it with
  * an empty hand, and gets off the same way, or when its owner sneak-uses a block with an empty
  * hand (it hops down onto that block; a perch becomes its seat), or uses a perch. It never gets
  * off on its own for a jump or a fall, and it follows its owner through portals; only its owner
@@ -24,8 +24,8 @@ public final class Shoulder {
 	}
 
 	/** The budgie on this player's shoulder, if one is. */
-	public static @Nullable Budgie riding(Player player) {
-		for (Budgie bird : player.level().getEntitiesOfClass(Budgie.class, player.getBoundingBox().inflate(3.0), b -> b.isOnShoulder() && b.isOwnedBy(player))) {
+	public static @Nullable LittleBird riding(Player player) {
+		for (LittleBird bird : player.level().getEntitiesOfClass(LittleBird.class, player.getBoundingBox().inflate(3.0), b -> b.isOnShoulder() && b.isOwnedBy(player))) {
 			return bird;
 		}
 		return null;
@@ -40,7 +40,7 @@ public final class Shoulder {
 		if (origin == player.level()) {
 			return;
 		}
-		for (Budgie bird : origin.getEntities(EntityTypeTest.forClass(Budgie.class), b -> b.isOnShoulder() && b.isOwnedBy(player))) {
+		for (LittleBird bird : origin.getEntities(EntityTypeTest.forClass(LittleBird.class), b -> b.isOnShoulder() && b.isOwnedBy(player))) {
 			bird.followThroughPortal(player);
 		}
 	}
@@ -54,7 +54,7 @@ public final class Shoulder {
 		if (!player.isShiftKeyDown() || !player.getMainHandItem().isEmpty()) {
 			return false;
 		}
-		Budgie bird = riding(player);
+		LittleBird bird = riding(player);
 		if (bird == null) {
 			return false;
 		}

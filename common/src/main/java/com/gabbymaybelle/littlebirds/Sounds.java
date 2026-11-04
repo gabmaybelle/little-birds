@@ -8,7 +8,7 @@ import net.minecraft.sounds.SoundEvent;
 
 /**
  * The birds' sound events. Which files play is {@code assets/little_birds/sounds.json}: a few
- * variants of each, cut from recordings of real budgies ({@code sounds/budgie/}).
+ * variants of each, cut from recordings of the real birds ({@code sounds/<bird>/}).
  */
 public final class Sounds {
 	/** A budgie going about its day. */
@@ -17,6 +17,13 @@ public final class Sounds {
 	public static final Supplier<SoundEvent> BUDGIE_GREETING = sound("budgie_greeting");
 	/** The murmur as it settles on its perch for the night. */
 	public static final Supplier<SoundEvent> BUDGIE_SETTLE = sound("budgie_settle");
+
+	/** A cockatiel's everyday chirps and whistles. */
+	public static final Supplier<SoundEvent> COCKATIEL_CHATTER = sound("cockatiel_chatter");
+	/** The whistle when its owner comes home. */
+	public static final Supplier<SoundEvent> COCKATIEL_GREETING = sound("cockatiel_greeting");
+	/** The soft call as it settles on its perch for the night. */
+	public static final Supplier<SoundEvent> COCKATIEL_SETTLE = sound("cockatiel_settle");
 
 	private Sounds() {
 	}

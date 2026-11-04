@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- The cockatiel: a parrot-sized little bird in three colours (the normal grey with its yellow
+  face and orange cheeks, the lutino, the white-faced grey), with a crest that stands up when it
+  says hello or takes off, and a whistle for a voice, cut from a recording of a real cockatiel.
+  Tamed with seeds like a budgie; the perch, the greeting, the shoulder and the call all work the
+  same. Wild cockatiels live in savannas, in pairs and threes.
+
 ## 0.1.0: Someone small is glad you're home
 
 The first release, for Minecraft 26.3 on Fabric and NeoForge.

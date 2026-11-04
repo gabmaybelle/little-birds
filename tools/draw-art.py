@@ -1,4 +1,4 @@
-"""The budgie textures, the spawn egg and a stand-in icon, painted box by box in the model's own
+"""The birds' textures and spawn eggs, painted box by box in each model's own
 texture layout (BudgieModel.createBodyLayer): head 2x3x2 at 0,0; skull cap 2x1x3 at 8,0; beak
 top 1x1x1 at 18,0; beak tip 1x1x1 at 22,0; body 3x5x3 at 0,6; wing 1x4x3 at 12,6; tail 2x5x1 at
 20,6; leg 1x2x1 at 12,13; 32x32. Shaded the way vanilla shades its mobs: each face lighter at the
@@ -126,6 +126,57 @@ def budgie(name, p):
 	img.save(TEX / "entity/budgie" / f"budgie_{name}.png")
 
 
+# Cockatiel: B body, F face and crest, C cheek patch, W wing bar, T tail, E eye, L feet, K beak.
+COCKATIEL = {
+	"grey": dict(B="#8d8d93", F="#f0dc5a", C="#f08a3a", W="#f2f2f4", T="#6f6f76", E="#141414", L="#8a8a90", K="#b7a98c", cheek=True, bar=True),
+	"lutino": dict(B="#f6eec4", F="#f4e07a", C="#f08a3a", W="#fffbe8", T="#f1e6b0", E="#c43b3b", L="#e8a8b0", K="#d8c7a2", cheek=True, bar=False),
+	"whiteface": dict(B="#8d8d93", F="#f4f4f6", C="#8d8d93", W="#f2f2f4", T="#6f6f76", E="#141414", L="#8a8a90", K="#b7a98c", cheek=False, bar=True),
+}
+
+
+def cockatiel(name, p):
+	"""The cockatiel's texture in CockatielModel's layout (64x32): head 3x4x3 at 0,0; cap 3x1x3 at 14,0;
+	crest 1x4x2 at 26,0; beak top 1x1x1 at 34,0; beak tip at 38,0; body 4x6x4 at 0,12; wing 1x5x4 at
+	18,12; tail 2x7x1 at 30,12; leg 1x3x1 at 40,12."""
+	img = Image.new("RGBA", (64, 32), (0, 0, 0, 0))
+
+	head = Box(img, 0, 0, 3, 4, 3)
+	head.fill(p["F"])
+	# The face is yellow (or white) down to the chin; the eye sits high on each side, the cheek patch below and behind it.
+	for side in ("left", "right"):
+		head.paint(side, lambda x, y, w, h: p["E"] if (x, y) == (1, 0) else (p["C"] if p["cheek"] and (x, y) in ((1, 1), (2, 1), (1, 2), (2, 2)) else p["F"]))
+	head.paint("back", lambda x, y, w, h: p["B"] if y >= 2 else p["F"])
+
+	cap = Box(img, 14, 0, 3, 1, 3)
+	cap.fill(p["F"])
+
+	crest = Box(img, 26, 0, 1, 4, 2)
+	crest.fill(p["F"])
+	crest.paint("back", lambda x, y, w, h: shade(p["F"], 0.9))
+
+	Box(img, 34, 0, 1, 1, 1).fill(p["K"])
+	Box(img, 38, 0, 1, 1, 1).fill(shade(p["K"], 0.85))
+
+	body = Box(img, 0, 12, 4, 6, 4)
+	body.fill(p["B"])
+	# The breast is a touch lighter than the back.
+	body.paint("front", lambda x, y, w, h: shade(p["B"], 1.06))
+
+	wing = Box(img, 18, 12, 1, 5, 4)
+	wing.fill(shade(p["B"], 0.92))
+	# The white bar along the folded wing's leading edge on the grey birds.
+	for side in ("left", "right"):
+		wing.paint(side, lambda x, y, w, h: p["W"] if p["bar"] and x == 0 and 1 <= y <= 3 else shade(p["B"], 0.92 if y < 4 else 0.8))
+
+	tail = Box(img, 30, 12, 2, 7, 1)
+	tail.fill(p["T"])
+
+	Box(img, 40, 12, 1, 3, 1).fill(p["L"])
+
+	(TEX / "entity/cockatiel").mkdir(parents=True, exist_ok=True)
+	img.save(TEX / "entity/cockatiel" / f"cockatiel_{name}.png")
+
+
 EGG = """
 ................
 ......oooo......
@@ -146,14 +197,13 @@ EGG = """
 """
 
 
-def egg():
-	pal = {"o": "#2e2119", "B": "#7fcf3a", "b": "#4f9a2a", "Y": "#f4e45a"}
+def egg(name, pal):
 	img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
 	for y, row in enumerate(EGG.strip("\n").split("\n")):
 		for x, ch in enumerate(row):
 			if ch != ".":
 				img.putpixel((x, y), rgb(pal[ch]))
-	img.save(TEX / "item/budgie_spawn_egg.png")
+	img.save(TEX / "item" / f"{name}_spawn_egg.png")
 
 
 def perch():
@@ -197,6 +247,9 @@ if __name__ == "__main__":
 	(TEX / "item").mkdir(parents=True, exist_ok=True)
 	for name, palette in PALETTES.items():
 		budgie(name, palette)
-	egg()
+	for name, palette in COCKATIEL.items():
+		cockatiel(name, palette)
+	egg("budgie", {"o": "#2e2119", "B": "#7fcf3a", "b": "#4f9a2a", "Y": "#f4e45a"})
+	egg("cockatiel", {"o": "#2e2119", "B": "#8d8d93", "b": "#6f6f76", "Y": "#f0dc5a"})
 	perch()
 	print("art written")

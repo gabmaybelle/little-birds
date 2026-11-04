@@ -15,10 +15,10 @@ public class FindPerchGoal extends Goal {
 	public static final int REACH = 8;
 	private static final int REACH_UP = 4;
 
-	private final Budgie bird;
+	private final LittleBird bird;
 	private @Nullable BlockPos found;
 
-	public FindPerchGoal(Budgie bird) {
+	public FindPerchGoal(LittleBird bird) {
 		this.bird = bird;
 	}
 
@@ -59,9 +59,9 @@ public class FindPerchGoal extends Goal {
 		return nearest;
 	}
 
-	/** Lovebirds will share a perch one day; for now one budgie, one perch. */
+	/** Lovebirds will share a perch one day; for now one bird, one perch. */
 	private boolean claimedByAnother(BlockPos perch) {
 		AABB around = new AABB(perch).inflate(FindPerchGoal.REACH * 2);
-		return !this.bird.level().getEntitiesOfClass(Budgie.class, around, other -> other != this.bird && perch.equals(other.getPerch())).isEmpty();
+		return !this.bird.level().getEntitiesOfClass(LittleBird.class, around, other -> other != this.bird && perch.equals(other.getPerch())).isEmpty();
 	}
 }

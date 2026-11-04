@@ -68,7 +68,7 @@ public class PerchBlock extends HorizontalDirectionalBlock {
 		if (level.isClientSide()) {
 			return InteractionResult.SUCCESS;
 		}
-		Budgie bird = Shoulder.riding(player);
+		LittleBird bird = Shoulder.riding(player);
 		if (bird != null) {
 			Vec3 seat = seat(pos);
 			bird.snapTo(seat.x, seat.y, seat.z, bird.getYRot(), 0.0F);
@@ -84,11 +84,11 @@ public class PerchBlock extends HorizontalDirectionalBlock {
 	}
 
 	/** The player's nearest tamed budgie within reach of the perch that isn't already sitting on it. */
-	private static @Nullable Budgie nearestBird(Level level, BlockPos pos, Player player) {
+	private static @Nullable LittleBird nearestBird(Level level, BlockPos pos, Player player) {
 		AABB around = new AABB(pos).inflate(CALL_REACH);
-		Budgie nearest = null;
+		LittleBird nearest = null;
 		double best = Double.MAX_VALUE;
-		for (Budgie bird : level.getEntitiesOfClass(Budgie.class, around, b -> b.isTame() && b.isOwnedBy(player) && !b.isOnShoulder())) {
+		for (LittleBird bird : level.getEntitiesOfClass(LittleBird.class, around, b -> b.isTame() && b.isOwnedBy(player) && !b.isOnShoulder())) {
 			if (bird.isPerched() && pos.equals(bird.getPerch())) {
 				continue;
 			}

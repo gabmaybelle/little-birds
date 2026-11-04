@@ -20,12 +20,12 @@ public class RoostGoal extends Goal {
 	/** How long it keeps trying to land before giving up for now. */
 	private static final int GIVE_UP_TICKS = 600;
 
-	private final Budgie bird;
+	private final LittleBird bird;
 	private int dwell;
 	private int flying;
 	private boolean landed;
 
-	public RoostGoal(Budgie bird) {
+	public RoostGoal(LittleBird bird) {
 		this.bird = bird;
 		this.setFlags(EnumSet.of(Flag.MOVE));
 	}
@@ -151,7 +151,7 @@ public class RoostGoal extends Goal {
 		this.bird.setInSittingPose(true);
 		if (this.bird.level().isDarkOutside()) {
 			// Settling in for the night: a soft murmur, then quiet until morning.
-			this.bird.playSound(Sounds.BUDGIE_SETTLE.get(), 0.6F, this.bird.getVoicePitch());
+			this.bird.playSound(this.bird.settleSound(), 0.6F, this.bird.getVoicePitch());
 		}
 	}
 

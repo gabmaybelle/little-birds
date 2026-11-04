@@ -18,7 +18,7 @@ import net.minecraft.util.Mth;
  * two short legs. About three quarters of a parrot. The texture is 32x32; {@code tools/draw-art.py}
  * paints it box by box in the same layout.
  */
-public class BudgieModel extends EntityModel<BudgieRenderState> {
+public class BudgieModel extends EntityModel<BirdRenderState> {
 	public static final ModelLayerLocation LAYER = new ModelLayerLocation(LittleBirds.id("budgie"), "main");
 
 	private final ModelPart body;
@@ -78,7 +78,7 @@ public class BudgieModel extends EntityModel<BudgieRenderState> {
 	}
 
 	@Override
-	public void setupAnim(BudgieRenderState state) {
+	public void setupAnim(BirdRenderState state) {
 		super.setupAnim(state);
 		this.head.xRot = state.xRot * Mth.DEG_TO_RAD;
 		this.head.yRot = state.yRot * Mth.DEG_TO_RAD;
@@ -117,7 +117,7 @@ public class BudgieModel extends EntityModel<BudgieRenderState> {
 			}
 			case SITTING, ROOSTING -> {
 				// Settled down over the feet, wings folded, tail resting lower.
-				if (state.pose == BudgieRenderState.Pose.ROOSTING) {
+				if (state.pose == BirdRenderState.Pose.ROOSTING) {
 					// Asleep: the head sinks into the shoulders, turned a little to one side, and stops following players.
 					this.head.xRot = 0.5F;
 					this.head.yRot = 0.6F;

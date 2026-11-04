@@ -3,6 +3,8 @@ package com.gabbymaybelle.littlebirds.neoforge;
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.LittleBirds;
 import com.gabbymaybelle.littlebirds.client.BudgieModel;
+import com.gabbymaybelle.littlebirds.client.CockatielModel;
+import com.gabbymaybelle.littlebirds.client.CockatielRenderer;
 import com.gabbymaybelle.littlebirds.client.BudgieRenderer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -13,7 +15,13 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 @Mod(value = LittleBirds.MOD_ID, dist = Dist.CLIENT)
 public class LittleBirdsNeoForgeClient {
 	public LittleBirdsNeoForgeClient(IEventBus modBus) {
-		modBus.addListener(EntityRenderersEvent.RegisterLayerDefinitions.class, event -> event.registerLayerDefinition(BudgieModel.LAYER, BudgieModel::createBodyLayer));
-		modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event -> event.registerEntityRenderer(Birds.BUDGIE.get(), BudgieRenderer::new));
+		modBus.addListener(EntityRenderersEvent.RegisterLayerDefinitions.class, event -> {
+			event.registerLayerDefinition(BudgieModel.LAYER, BudgieModel::createBodyLayer);
+			event.registerLayerDefinition(CockatielModel.LAYER, CockatielModel::createBodyLayer);
+		});
+		modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event -> {
+			event.registerEntityRenderer(Birds.BUDGIE.get(), BudgieRenderer::new);
+			event.registerEntityRenderer(Birds.COCKATIEL.get(), CockatielRenderer::new);
+		});
 	}
 }

@@ -2,6 +2,7 @@ package com.gabbymaybelle.littlebirds.gametest.neoforge;
 
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.Budgie;
+import com.gabbymaybelle.littlebirds.Cockatiel;
 import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
@@ -18,6 +19,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -358,6 +360,41 @@ final class BudgieChecks {
 		});
 	}
 
+	/** A cockatiel lives with 6 health, keeps its colour, is tamed with seeds, and the savanna lists it at weight 8. */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: taming needs a player
+	static void cockatiel(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos at = helper.absolutePos(new BlockPos(0, 2, 0));
+		helper.assertTrue(BuiltInRegistries.ENTITY_TYPE.containsKey(Birds.COCKATIEL_ID), "the cockatiel should be registered");
+		helper.assertTrue(Birds.COCKATIEL_SPAWN_EGG.get() instanceof SpawnEggItem, "the cockatiel spawn egg should be registered");
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Cockatiel bird = Birds.COCKATIEL.get().create(level, EntitySpawnReason.COMMAND);
+		try {
+			player.setGameMode(GameType.CREATIVE);
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+			bird.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0, 0);
+			bird.setColour(Cockatiel.Colour.WHITEFACE);
+			bird.setNoAi(true);
+			level.addFreshEntity(bird);
+			double health = bird.getAttributeValue(Attributes.MAX_HEALTH);
+			helper.assertTrue(health == 6.0, "the cockatiel should have 6 health (got " + health + ")");
+			helper.assertTrue(bird.getColour() == Cockatiel.Colour.WHITEFACE, "the cockatiel should keep its colour (got " + bird.getColour() + ")");
+			int tries = 0;
+			while (tries < 60 && !bird.isTame()) {
+				tries++;
+				bird.mobInteract(player, InteractionHand.MAIN_HAND);
+			}
+			int savanna = weightOf(level, Biomes.SAVANNA, Birds.COCKATIEL.get());
+			System.out.println("[little_birds_gametest] cockatiel: health " + health + ", tame " + bird.isTame() + " after " + tries + " tries, savanna weight " + savanna);
+			helper.assertTrue(bird.isTame(), "seeds should tame a cockatiel (" + tries + " tries)");
+			helper.assertTrue(savanna == 8, "savannas should spawn cockatiels at weight 8 (got " + savanna + ")");
+		} finally {
+			bird.discard();
+			level.getServer().getPlayerList().remove(player);
+		}
+		helper.succeed();
+	}
+
 	/** Wild budgies may appear on grass in daylight, not on stone, and never while natural spawning is off or the chance is 0. */
 	static void spawnRules(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
@@ -404,6 +441,10 @@ final class BudgieChecks {
 	}
 
 	private static int weight(ServerLevel level, ResourceKey<Biome> biome) {
+		return weightOf(level, biome, Birds.BUDGIE.get());
+	}
+
+	private static int weightOf(ServerLevel level, ResourceKey<Biome> biome, EntityType<?> type) {
 		Biome b = level.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(biome).value();
 		var entry = b.getAttributes().get(EnvironmentAttributes.NATURAL_MOB_SPAWNS);
 		if (entry == null) {
@@ -411,6 +452,6 @@ final class BudgieChecks {
 		}
 		MobSpawnSettings spawns = (MobSpawnSettings) entry.argument();
 		return spawns.getMobsToSpawn(MobCategory.CREATURE).unwrap().stream()
-				.filter(w -> w.value().type() == Birds.BUDGIE.get()).mapToInt(w -> w.weight()).sum();
+				.filter(w -> w.value().type() == type).mapToInt(w -> w.weight()).sum();
 	}
 }

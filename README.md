@@ -14,8 +14,9 @@ come back after a while away; a shoulder it rides only when asked (sneak-use it)
 falls and portals; use a perch to call your bird to it. Wild budgies live in savannas and on
 jungle edges, with a settings file to turn that off. More birds to come.
 
-Minecraft 26.3, Fabric and NeoForge. Made by Gabby. The budgie's voice is cut from public-domain
-(CC0) recordings of real budgies on Freesound by much_username, tomattka and squashy555.
+Minecraft 26.3, Fabric and NeoForge. Made by Gabby. The birds' voices are cut from public-domain
+(CC0) recordings of real birds on Freesound: budgies by much_username, tomattka and squashy555,
+a cockatiel by Tairblenn.
 
 ## Building
 

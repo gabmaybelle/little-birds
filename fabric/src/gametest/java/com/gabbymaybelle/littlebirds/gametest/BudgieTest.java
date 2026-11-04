@@ -2,6 +2,7 @@ package com.gabbymaybelle.littlebirds.gametest;
 
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.Budgie;
+import com.gabbymaybelle.littlebirds.Cockatiel;
 import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
@@ -72,6 +73,7 @@ public class BudgieTest implements FabricClientGameTest {
 			perch(ctx, server, home);
 			greeting(ctx, server, home);
 			shoulder(ctx, server, home);
+			cockatiel(ctx, server, home);
 			spawnRules(server, home.offset(6, 0, 6));
 			biomes(server);
 		}
@@ -98,7 +100,8 @@ public class BudgieTest implements FabricClientGameTest {
 	 * sound from each event and looks its file up in the resources.
 	 */
 	private void sounds(ClientGameTestContext ctx) {
-		for (var sound : List.of(Sounds.BUDGIE_CHATTER, Sounds.BUDGIE_GREETING, Sounds.BUDGIE_SETTLE)) {
+		for (var sound : List.of(Sounds.BUDGIE_CHATTER, Sounds.BUDGIE_GREETING, Sounds.BUDGIE_SETTLE,
+				Sounds.COCKATIEL_CHATTER, Sounds.COCKATIEL_GREETING, Sounds.COCKATIEL_SETTLE)) {
 			var id = sound.get().location();
 			String found = ctx.computeOnClient(mc -> {
 				var event = mc.getSoundManager().getSoundEvent(id);
@@ -384,6 +387,84 @@ public class BudgieTest implements FabricClientGameTest {
 			s.overworld().setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
 			s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
 		});
+	}
+
+	/**
+	 * The cockatiel: it is registered with its egg, lives, keeps its colour, is tamed with seeds like
+	 * a budgie, greets its owner (the shared bird code), and is listed in savannas; a still one is
+	 * posed beside a budgie and a parrot for the size screenshot.
+	 */
+	private void cockatiel(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		check(BuiltInRegistries.ENTITY_TYPE.containsKey(Birds.COCKATIEL_ID), "the cockatiel is registered");
+		check(Birds.COCKATIEL_SPAWN_EGG.get() instanceof SpawnEggItem, "the cockatiel spawn egg is registered");
+		Cockatiel bird = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Cockatiel b = Birds.COCKATIEL.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 1.5, home.getY(), home.getZ() + 1.5, 0, 0);
+			b.setColour(Cockatiel.Colour.LUTINO);
+			b.setNoAi(true);
+			level.addFreshEntity(b);
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+			return b;
+		});
+		ctx.waitTicks(20);
+		check(bird.isAlive(), "a cockatiel put in the world is alive");
+		double health = server.computeOnServer(s -> bird.getAttributeValue(Attributes.MAX_HEALTH));
+		check(health == 6.0, "the cockatiel has 6 health (got " + health + ")");
+		check(bird.getColour() == Cockatiel.Colour.LUTINO, "the cockatiel kept its colour (got " + bird.getColour() + ")");
+		int tries = 0;
+		while (tries < 60 && !bird.isTame()) {
+			tries++;
+			server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
+			ctx.waitTicks(1);
+		}
+		check(bird.isTame(), "seeds tame a cockatiel (after " + tries + " tries)");
+		server.runOnServer(s -> player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY));
+		// The greeting comes from the shared bird code: away an hour, back, one whistle.
+		server.runOnServer(s -> {
+			bird.setNoAi(false);
+			bird.setOrderedToSit(true);
+		});
+		teleport(server, home.offset(40, 0, 0));
+		server.runCommand("time add 1200");
+		ctx.waitTicks(15);
+		teleport(server, home);
+		ctx.waitTicks(30);
+		check(bird.greetings == 1, "back after an hour away, the cockatiel whistles hello (greetings: " + bird.greetings + ")");
+		int savanna = server.computeOnServer(s -> {
+			Biome b = s.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.SAVANNA).value();
+			var entry = b.getAttributes().get(EnvironmentAttributes.NATURAL_MOB_SPAWNS);
+			MobSpawnSettings spawns = (MobSpawnSettings) entry.argument();
+			return spawns.getMobsToSpawn(MobCategory.CREATURE).unwrap().stream()
+					.filter(w -> w.value().type() == Birds.COCKATIEL.get()).mapToInt(w -> w.weight()).sum();
+		});
+		check(savanna == 8, "savannas spawn cockatiels at weight 8 (got " + savanna + ")");
+		// Side on, for size: a still grey cockatiel between a still budgie and a vanilla parrot.
+		server.runCommand("kill @e[type=little_birds:cockatiel]");
+		ctx.waitTicks(80);
+		server.runOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Cockatiel c = Birds.COCKATIEL.get().create(level, EntitySpawnReason.COMMAND);
+			c.snapTo(home.getX() + 3.5, home.getY(), home.getZ() + 0.5, 0, 0);
+			c.setColour(Cockatiel.Colour.GREY);
+			c.setNoAi(true);
+			c.setOnGround(true);
+			level.addFreshEntity(c);
+			Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 3.5, home.getY(), home.getZ() - 1.0, 0, 0);
+			b.setColour(Budgie.Colour.GREEN);
+			b.setNoAi(true);
+			b.setOnGround(true);
+			level.addFreshEntity(b);
+			s.getCommands().performPrefixedCommand(s.createCommandSourceStack().withSuppressedOutput(),
+					"summon minecraft:parrot " + (home.getX() + 3.5) + " " + home.getY() + " " + (home.getZ() + 2.0) + " {NoAI:1b}");
+			player(s).teleportTo(level, home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), -90.0F, 20.0F, false);
+		});
+		ctx.waitTicks(10);
+		ctx.takeScreenshot("cockatiel");
+		server.runCommand("kill @e[type=little_birds:cockatiel]");
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		server.runCommand("kill @e[type=minecraft:parrot]");
 	}
 
 	private static void usePerch(TestServerContext server, BlockPos perch) {
