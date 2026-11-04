@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.0: Someone small is glad you're home
+
+The first release, for Minecraft 26.3 on Fabric and NeoForge.
 
 - The budgie: a small pet bird in four colours (green, blue, yellow, white), tamed with seeds,
   that flies, sits when told and follows its owner. A spawn egg.

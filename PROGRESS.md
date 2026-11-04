@@ -30,7 +30,9 @@ which checks fail, code put back), what was learned, and what was deliberately n
 
 ## Next (0.1.0, locked)
 
-1. Release prep: a hand play of the release jar, the listing.
+1. Release 0.1.0: the pre-release check, the GitHub release, the listing. (Hand play done
+   2026-11-04: Gabby played the 0.1.0 Fabric jar in a fresh instance; everything worked, and the
+   budgie on her shoulder passed the only test that matters.)
 
 New ideas during the build go to 0.2.0 or later, never into 0.1.0.
 
