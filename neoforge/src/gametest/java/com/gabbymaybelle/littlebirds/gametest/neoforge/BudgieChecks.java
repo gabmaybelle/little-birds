@@ -529,6 +529,75 @@ final class BudgieChecks {
 		});
 	}
 
+	/** A paired pair of lovebirds fed together makes a chick; a third lovebird fed with one of them makes nothing. */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: breeding needs an owner
+	static void lovebirdChick(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos at = helper.absolutePos(new BlockPos(3, 1, 3));
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+		player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+		Lovebird a = Birds.LOVEBIRD.get().create(level, EntitySpawnReason.COMMAND);
+		Lovebird b = Birds.LOVEBIRD.get().create(level, EntitySpawnReason.COMMAND);
+		Lovebird c = Birds.LOVEBIRD.get().create(level, EntitySpawnReason.COMMAND);
+		a.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 1.5, 0, 0);
+		b.snapTo(at.getX() + 1.5, at.getY(), at.getZ() + 1.5, 0, 0);
+		c.snapTo(at.getX() + 2.5, at.getY(), at.getZ() + 1.5, 0, 0);
+		for (Lovebird bird : List.of(a, b, c)) {
+			bird.tame(player);
+			level.addFreshEntity(bird);
+		}
+		a.pairWith(b);
+		Lovebird[] born = {null};
+		int[] ticks = {0};
+		int[] phase = {0};
+		Runnable tidy = () -> {
+			a.discard();
+			b.discard();
+			c.discard();
+			if (born[0] != null) {
+				born[0].discard();
+			}
+			level.getServer().getPlayerList().remove(player);
+		};
+		java.util.function.Supplier<Lovebird> chick = () -> {
+			List<Lovebird> chicks = level.getEntitiesOfClass(Lovebird.class, new AABB(at).inflate(6), x -> x.isBaby() && x.isOwnedBy(player));
+			return chicks.isEmpty() ? null : chicks.getFirst();
+		};
+		helper.runAfterDelay(5, () -> {
+			a.mobInteract(player, InteractionHand.MAIN_HAND);
+			c.mobInteract(player, InteractionHand.MAIN_HAND);
+		});
+		helper.runAfterDelay(305, () -> {
+			try {
+				helper.assertTrue(chick.get() == null, "a lovebird fed with a bird that isn't its partner should make no chick");
+			} catch (RuntimeException e) {
+				tidy.run();
+				throw e;
+			}
+			c.discard();
+			phase[0] = 1;
+		});
+		helper.onEachTick(() -> {
+			ticks[0]++;
+			if (phase[0] == 1 && !a.isInLove()) {
+				a.mobInteract(player, InteractionHand.MAIN_HAND);
+				b.mobInteract(player, InteractionHand.MAIN_HAND);
+				System.out.println("[little_birds_gametest] lovebird chick: pair fed at tick " + ticks[0] + ", in love " + a.isInLove() + "/" + b.isInLove());
+				phase[0] = 2;
+			} else if (phase[0] == 2) {
+				Lovebird found = chick.get();
+				if (found != null) {
+					born[0] = found;
+					System.out.println("[little_birds_gametest] lovebird chick: born at tick " + ticks[0] + ", colour " + found.getColour());
+					tidy.run();
+					phase[0] = 3;
+					helper.succeed();
+				}
+			}
+		});
+	}
+
 	/** Wild budgies may appear on grass in daylight, not on stone, and never while natural spawning is off or the chance is 0. */
 	static void spawnRules(GameTestHelper helper) {
 		ServerLevel level = helper.getLevel();
