@@ -54,6 +54,7 @@ public class BudgieTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext ctx) {
 		loaded();
+		sounds(ctx);
 		try (TestSingleplayerContext world = ctx.worldBuilder().create()) {
 			world.getConnection().waitForChunksRender();
 			TestServerContext server = world.getServer();
@@ -89,6 +90,26 @@ public class BudgieTest implements FabricClientGameTest {
 		}
 		check(BuiltInRegistries.ENTITY_TYPE.containsKey(Birds.BUDGIE_ID), "the budgie is registered");
 		check(Birds.BUDGIE_SPAWN_EGG.get() instanceof SpawnEggItem, "the budgie spawn egg is registered");
+	}
+
+	/**
+	 * The budgie's three sound events each have real files behind them on the client: the sound
+	 * manager drops an entry whose file is missing (leaving the event empty), so this picks a
+	 * sound from each event and looks its file up in the resources.
+	 */
+	private void sounds(ClientGameTestContext ctx) {
+		for (var sound : List.of(Sounds.BUDGIE_CHATTER, Sounds.BUDGIE_GREETING, Sounds.BUDGIE_SETTLE)) {
+			var id = sound.get().location();
+			String found = ctx.computeOnClient(mc -> {
+				var event = mc.getSoundManager().getSoundEvent(id);
+				if (event == null || event.getWeight() == 0) {
+					return "no sounds listed";
+				}
+				var pick = event.getSound(net.minecraft.util.RandomSource.create());
+				return mc.getResourceManager().getResource(pick.getPath()).isPresent() ? "ok " + pick.getPath().getPath() : "missing file " + pick.getPath();
+			});
+			check(found.startsWith("ok "), "the sound " + id.getPath() + " has files to play (" + found + ")");
+		}
 	}
 
 	/** A budgie put down near the player is alive 40 ticks later, has the budgie's health, and keeps the colour it was given. */
@@ -304,21 +325,23 @@ public class BudgieTest implements FabricClientGameTest {
 		ctx.waitTicks(40);
 		check(first.isOnShoulder(), "it stays on through a fall");
 		// Its owner goes to the Nether: the first turns up on the shoulder there, and comes back the same way.
+		// (The Nether generates on the way, which can stall the server for seconds, so these wait as long as it takes.)
 		server.runCommand("execute in minecraft:the_nether run tp @a 8.5 80.0 8.5");
-		ctx.waitTicks(40);
-		Budgie inNether = server.computeOnServer(s -> {
+		java.util.function.Function<MinecraftServer, Budgie> inNether = s -> {
 			ServerLevel nether = s.getLevel(net.minecraft.world.level.Level.NETHER);
 			List<Budgie> birds = nether.getEntitiesOfClass(Budgie.class, player(s).getBoundingBox().inflate(3.0), b -> b.isOnShoulder());
 			return birds.isEmpty() ? null : birds.getFirst();
-		});
-		check(inNether != null, "through a portal to the Nether, the budgie comes along on the shoulder");
+		};
+		check(waitFor(ctx, server, 1200, s -> player(s).level().dimension() == net.minecraft.world.level.Level.NETHER && inNether.apply(s) != null),
+				"through a portal to the Nether, the budgie comes along on the shoulder");
 		teleport(server, home);
-		ctx.waitTicks(40);
-		Budgie back = server.computeOnServer(s -> {
+		java.util.function.Function<MinecraftServer, Budgie> inOverworld = s -> {
 			List<Budgie> birds = s.overworld().getEntitiesOfClass(Budgie.class, player(s).getBoundingBox().inflate(3.0), b -> b.isOnShoulder());
 			return birds.isEmpty() ? null : birds.getFirst();
-		});
-		check(back != null, "and back to the Overworld with its owner");
+		};
+		check(waitFor(ctx, server, 1200, s -> player(s).level().dimension() == net.minecraft.world.level.Level.OVERWORLD && inOverworld.apply(s) != null),
+				"and back to the Overworld with its owner");
+		Budgie back = server.computeOnServer(inOverworld::apply);
 		Budgie bird = back != null ? back : first;
 		server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
 		ctx.waitTicks(5);
@@ -334,8 +357,7 @@ public class BudgieTest implements FabricClientGameTest {
 				"a sneak-use on a block sets it down on that block");
 		// Back on, then a use of the perch: it sits on the perch and the perch is its home.
 		server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
-		ctx.waitTicks(5);
-		check(bird.isOnShoulder(), "it gets back on for the perch check");
+		check(waitFor(ctx, server, 100, s -> bird.isOnShoulder()), "it gets back on for the perch check");
 		server.runOnServer(s -> player(s).setShiftKeyDown(false));
 		usePerch(server, perch);
 		ctx.waitTicks(5);

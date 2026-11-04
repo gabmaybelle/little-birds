@@ -2,19 +2,27 @@
 	"budgie_chatter": {
 		"subtitle": "subtitles.little_birds.budgie_chatter",
 		"sounds": [
-			{ "name": "minecraft:entity.parrot.ambient", "type": "event", "pitch": 1.3 }
+			"little_birds:budgie/chatter1",
+			"little_birds:budgie/chatter2",
+			"little_birds:budgie/chatter3",
+			"little_birds:budgie/chatter4",
+			"little_birds:budgie/chatter5"
 		]
 	},
 	"budgie_greeting": {
 		"subtitle": "subtitles.little_birds.budgie_greeting",
 		"sounds": [
-			{ "name": "minecraft:entity.parrot.ambient", "type": "event", "pitch": 1.5 }
+			"little_birds:budgie/greeting1",
+			"little_birds:budgie/greeting2",
+			"little_birds:budgie/greeting3"
 		]
 	},
 	"budgie_settle": {
 		"subtitle": "subtitles.little_birds.budgie_settle",
 		"sounds": [
-			{ "name": "minecraft:entity.parrot.ambient", "type": "event", "pitch": 1.1, "volume": 0.6 }
+			"little_birds:budgie/settle1",
+			"little_birds:budgie/settle2",
+			"little_birds:budgie/settle3"
 		]
 	}
 }

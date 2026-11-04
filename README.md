@@ -11,7 +11,8 @@ collect.
 **In progress.** The first release will have the budgie in four colours (tamed with seeds), a
 perch it calls home, a chirp when you come back and a shoulder it only rides when asked.
 
-Minecraft 26.3, Fabric and NeoForge. Made by Gabby.
+Minecraft 26.3, Fabric and NeoForge. Made by Gabby. The budgie's voice is cut from public-domain
+(CC0) recordings of real budgies on Freesound by much_username, tomattka and squashy555.
 
 ## Building
 

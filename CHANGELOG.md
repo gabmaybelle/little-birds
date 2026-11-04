@@ -15,8 +15,9 @@
   in, and stays home when you go out instead of following. Break the perch and it follows you
   again.
 - The greeting: when you come back after an hour or more away, your budgie chirps hello and
-  bobs. On its perch after dark it goes quiet. Its chatter, greeting and settling-down sounds are
-  its own sound events (the parrot's voice, pitched up, until it has recordings of its own).
+  bobs. On its perch after dark it goes quiet.
+- The budgie's own voice: chatter, a hello chirp and a settling-down warble, several variants of
+  each, cut from public-domain recordings of real budgies.
 - Shoulder on request: sneak-use a tamed budgie with an empty hand and it sits on your shoulder;
   it never jumps off for a jump or a fall, and it comes with you through portals. Sneak-use it
   again, or sneak-use a block, to set it down. Use a perch to set a shoulder bird down on it, or to call your nearest budgie to it.

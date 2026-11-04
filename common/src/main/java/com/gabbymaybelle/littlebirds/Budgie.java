@@ -518,10 +518,10 @@ public class Budgie extends ShoulderRidingEntity {
 		this.nextFlap = this.flyDist + this.flapSpeed / 2.0F;
 	}
 
-	/** A small bird, a high voice: a touch above the parrot's. */
+	/** Its own recordings play as they are, give or take a little, so no two chirps are quite the same. */
 	@Override
 	public float getVoicePitch() {
-		return (this.random.nextFloat() - this.random.nextFloat()) * 0.2F + 1.3F;
+		return (this.random.nextFloat() - this.random.nextFloat()) * 0.1F + 1.0F;
 	}
 
 	@Override

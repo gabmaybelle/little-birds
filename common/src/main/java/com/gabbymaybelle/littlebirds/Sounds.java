@@ -7,9 +7,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 
 /**
- * The birds' sound events. Which sound files play is {@code assets/little_birds/sounds.json}:
- * until the budgie has its own recordings, each points at the vanilla parrot's sounds, pitched
- * up, so the game never looks for files that aren't there.
+ * The birds' sound events. Which files play is {@code assets/little_birds/sounds.json}: a few
+ * variants of each, cut from recordings of real budgies ({@code sounds/budgie/}).
  */
 public final class Sounds {
 	/** A budgie going about its day. */
