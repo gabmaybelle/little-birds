@@ -8,7 +8,8 @@ which checks fail, code put back), what was learned, and what was deliberately n
 
 - **Done, birds:** every bird shares one base (the perch, the greeting, the shoulder, the call);
   each brings its size, colours, model and voice. The cockatiel: three colours, a crest that
-  stands for the greeting, a whistle, savanna spawns.
+  stands for the greeting, a whistle, savanna spawns. The lovebird: three colours, pairs that
+  find each other, keep together and sit side by side on one perch, savanna spawns in twos.
 - **Done:** the budgie: its own model and animation (flapping in the air, little steps and a head
   bob on the ground, settling down to sit, head tucked when asleep), textures with the real
   markings in four colours, a spawn egg with its own art; tamed with seeds, sits when told,
@@ -31,10 +32,13 @@ which checks fail, code put back), what was learned, and what was deliberately n
   replace them in the same layout.
 - **Not yet:** nothing of 0.1.0's feature list; what is left is release prep.
 
-## Next (0.2.0)
+## Next
 
-1. The lovebird: pairs, two on one perch.
-2. Release 0.2.0, then the listings (Gabby lists once more birds are in).
+1. Release 0.2.0 (three birds), then Gabby's listings on Modrinth and CurseForge.
+2. 0.3.0: the millet spray (a treat that tames faster and coaxes a bird over), the hanging cage
+   (a perch with a door you can carry a bird in), finches and canaries (song birds that sing in
+   a cage or on a perch, each with its own song).
+3. Later: breeding, once 0.2.0 has shipped and been played.
 
 New ideas during the build go to 0.2.0 or later, never into 0.1.0.
 

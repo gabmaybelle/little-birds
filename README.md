@@ -8,11 +8,13 @@ that make a perch their own: they chatter when you come in, nap at dusk, ride on
 when you ask, and are glad when you come home. A companion for the cottage, not a creature to
 collect.
 
-**What's in 0.1.0:** the budgie in four colours, tamed with seeds; a perch it makes its home,
-where it sits by day and sleeps at night, and stays when you go out; a chirp and a bob when you
-come back after a while away; a shoulder it rides only when asked (sneak-use it), through jumps,
-falls and portals; use a perch to call your bird to it. Wild budgies live in savannas and on
-jungle edges, with a settings file to turn that off. More birds to come.
+**Three birds so far:** the budgie in four colours, the cockatiel in three with a crest that
+lifts when it whistles hello, and the lovebird in three, which lives in a pair that shares one
+perch. All are tamed with seeds. A tamed bird makes a perch its home, where it sits by day and
+sleeps at night, and stays when you go out; it chirps and bobs when you come back after a while
+away; it rides your shoulder only when asked (sneak-use it), through jumps, falls and portals;
+use a perch to call your bird to it. Wild birds live in savannas, budgies on jungle edges too,
+with a settings file to turn that off. More birds to come.
 
 Minecraft 26.3, Fabric and NeoForge. Made by Gabby. The birds' voices are cut from public-domain
 (CC0) recordings of real birds on Freesound: budgies by much_username, tomattka and squashy555,

@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.0: A bird or two
+
+Two more birds, for Minecraft 26.3 on Fabric and NeoForge. Worlds from 0.1.0 keep their budgies.
 
 - The cockatiel: a parrot-sized little bird in three colours (the normal grey with its yellow
   face and orange cheeks, the lutino, the white-faced grey), with a crest that stands up when it
