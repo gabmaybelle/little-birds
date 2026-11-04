@@ -13,12 +13,12 @@ yellow) and albino (all white) have no black at all: silvery-white cheeks, red e
     py tools/draw-art.py
 
 Writes common/src/main/resources/assets/little_birds/textures/entity/budgie/budgie_<colour>.png,
-textures/item/budgie_spawn_egg.png, textures/block/perch.png and art/icon.png (the icon is a
-stand-in until the real one).
+textures/item/budgie_spawn_egg.png and textures/block/perch.png. The icon (art/icon.png) is
+drawn by hand, not here.
 """
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 TEX = ROOT / "common/src/main/resources/assets/little_birds/textures"
@@ -192,22 +192,6 @@ def perch():
 	img.save(TEX / "block/perch.png")
 
 
-def icon():
-	"""A stand-in: a green budgie on a perch, a 32-px sprite scaled to 512 on transparency. The real icon replaces it."""
-	img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
-	d = ImageDraw.Draw(img)
-	d.rectangle((6, 25, 25, 26), fill=(150, 110, 70))
-	d.rectangle((15, 27, 16, 31), fill=(120, 90, 55))
-	d.ellipse((10, 10, 21, 25), fill=(127, 207, 58))
-	d.ellipse((12, 5, 20, 13), fill=(244, 228, 90))
-	d.rectangle((19, 9, 21, 10), fill=(216, 192, 138))
-	d.point((17, 8), fill=(20, 20, 20))
-	d.rectangle((13, 16, 15, 23), fill=(79, 154, 42))
-	d.rectangle((9, 20, 10, 27), fill=(43, 95, 176))
-	(ROOT / "art").mkdir(exist_ok=True)
-	img.resize((512, 512), Image.NEAREST).save(ROOT / "art/icon.png")
-
-
 if __name__ == "__main__":
 	(TEX / "entity/budgie").mkdir(parents=True, exist_ok=True)
 	(TEX / "item").mkdir(parents=True, exist_ok=True)
@@ -215,5 +199,4 @@ if __name__ == "__main__":
 		budgie(name, palette)
 	egg()
 	perch()
-	icon()
 	print("art written")

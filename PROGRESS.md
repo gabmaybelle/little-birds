@@ -23,13 +23,14 @@ which checks fail, code put back), what was learned, and what was deliberately n
 - **Done, sounds:** the budgie's voice is real: eleven short cuts (three hello chirps, five bits of
   chatter, three soft settling warbles) from CC0 recordings of pet budgies on Freesound, mono OGG
   in `sounds/budgie/`, wired in `sounds.json`. Gabby's own recordings can replace them file for file.
-- **Placeholder:** the icon (a stand-in from the art script). The textures are drawn by
-  `tools/draw-art.py`; hand-painted ones can replace them in the same layout.
+- **Done, icon:** a green budgie on its perch, `art/icon.png`, in the jars and the listing folder.
+- **Placeholder:** none. The textures are drawn by `tools/draw-art.py`; hand-painted ones can
+  replace them in the same layout.
 - **Not yet:** nothing of 0.1.0's feature list; what is left is release prep.
 
 ## Next (0.1.0, locked)
 
-1. Release prep: the icon, a hand play of the release jar, the listing.
+1. Release prep: a hand play of the release jar, the listing.
 
 New ideas during the build go to 0.2.0 or later, never into 0.1.0.
 

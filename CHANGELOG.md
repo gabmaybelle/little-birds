@@ -18,6 +18,7 @@
   bobs. On its perch after dark it goes quiet.
 - The budgie's own voice: chatter, a hello chirp and a settling-down warble, several variants of
   each, cut from public-domain recordings of real budgies.
+- The icon: a green budgie on its perch.
 - Shoulder on request: sneak-use a tamed budgie with an empty hand and it sits on your shoulder;
   it never jumps off for a jump or a fall, and it comes with you through portals. Sneak-use it
   again, or sneak-use a block, to set it down. Use a perch to set a shoulder bird down on it, or to call your nearest budgie to it.
