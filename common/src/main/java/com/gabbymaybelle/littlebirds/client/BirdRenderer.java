@@ -45,6 +45,15 @@ public class BirdRenderer<T extends LittleBird, M extends EntityModel<BirdRender
 		state.hidden = bird.isOnShoulder() && bird.getOwner() == minecraft.getCameraEntity() && minecraft.options.getCameraType().isFirstPerson();
 	}
 
+	/** A chick is drawn at its age's size (vanilla's models do this inside the model; these do it here). */
+	@Override
+	protected void scale(BirdRenderState state, PoseStack poseStack) {
+		super.scale(state, poseStack);
+		if (state.ageScale != 1.0F) {
+			poseStack.scale(state.ageScale, state.ageScale, state.ageScale);
+		}
+	}
+
 	/** A bird on your own shoulder isn't drawn while you look out of your own eyes, like vanilla's shoulder parrots. */
 	@Override
 	public void submit(BirdRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera) {

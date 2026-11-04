@@ -76,6 +76,7 @@ public class BudgieTest implements FabricClientGameTest {
 			shoulder(ctx, server, home);
 			cockatiel(ctx, server, home);
 			lovebirds(ctx, server, home);
+			breeding(ctx, server, home);
 			spawnRules(server, home.offset(6, 0, 6));
 			biomes(server);
 		}
@@ -542,6 +543,99 @@ public class BudgieTest implements FabricClientGameTest {
 			s.overworld().setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
 			s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
 		});
+	}
+
+	/**
+	 * Breeding: two tamed budgies fed seeds fall in love and make a chick in one parent's colour
+	 * that belongs to the same owner, is small, and can't be put on a shoulder. A lovebird fed
+	 * beside a lovebird that isn't its partner makes nothing; fed with its partner, a chick.
+	 */
+	private void breeding(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		List<Budgie> parents = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			List<Budgie> birds = new ArrayList<>();
+			for (int i = 0; i < 2; i++) {
+				Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+				b.snapTo(home.getX() + 1.5 + i, home.getY(), home.getZ() + 1.5, 0, 0);
+				b.setColour(i == 0 ? Budgie.Colour.GREEN : Budgie.Colour.BLUE);
+				b.tame(player(s));
+				level.addFreshEntity(b);
+				birds.add(b);
+			}
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+			return birds;
+		});
+		ctx.waitTicks(5);
+		server.runOnServer(s -> parents.forEach(b -> b.mobInteract(player(s), InteractionHand.MAIN_HAND)));
+		ctx.waitTicks(2);
+		check(parents.get(0).isInLove() && parents.get(1).isInLove(), "seeds put two tamed budgies in love");
+		java.util.function.Function<MinecraftServer, Budgie> chickOf = s -> {
+			List<Budgie> chicks = s.overworld().getEntitiesOfClass(Budgie.class, new AABB(home).inflate(16), b -> b.isBaby());
+			return chicks.isEmpty() ? null : chicks.getFirst();
+		};
+		check(waitFor(ctx, server, 600, s -> chickOf.apply(s) != null), "a budgie chick is born");
+		Budgie chick = server.computeOnServer(chickOf::apply);
+		if (chick != null) {
+			check(chick.getColour() == Budgie.Colour.GREEN || chick.getColour() == Budgie.Colour.BLUE, "the chick has one parent's colour (got " + chick.getColour() + ")");
+			check(server.computeOnServer(s -> chick.isTame() && chick.isOwnedBy(player(s))), "the chick belongs to its parents' owner");
+			float scale = server.computeOnServer(s -> chick.getAgeScale());
+			check(scale < 1.0F, "the chick is small (scale " + scale + ")");
+			server.runOnServer(s -> {
+				player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+				player(s).setShiftKeyDown(true);
+				chick.mobInteract(player(s), InteractionHand.MAIN_HAND);
+				player(s).setShiftKeyDown(false);
+			});
+			ctx.waitTicks(5);
+			check(!chick.isOnShoulder(), "a chick can't be put on a shoulder");
+			// The chick beside a parent, side on, for size.
+			server.runOnServer(s -> {
+				Budgie parent = parents.get(0);
+				parent.setNoAi(true);
+				parent.setOnGround(true);
+				parent.snapTo(home.getX() + 3.5, home.getY(), home.getZ() + 0.5, 0, 0);
+				chick.setNoAi(true);
+				chick.setOnGround(true);
+				chick.snapTo(home.getX() + 3.5, home.getY(), home.getZ() + 1.5, 0, 0);
+				player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.8, java.util.Set.of(), -90.0F, 15.0F, false);
+			});
+			ctx.waitTicks(10);
+			ctx.takeScreenshot("budgie_chick");
+			server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
+		}
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		ctx.waitTicks(5);
+		// Lovebirds: three tamed; A and B pair; A fed with C (not its partner) makes nothing; A fed with B makes a chick.
+		List<Lovebird> loves = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			List<Lovebird> birds = new ArrayList<>();
+			for (int i = 0; i < 3; i++) {
+				Lovebird b = Birds.LOVEBIRD.get().create(level, EntitySpawnReason.COMMAND);
+				b.snapTo(home.getX() + 1.5 + i, home.getY(), home.getZ() + 1.5, 0, 0);
+				b.setColour(Lovebird.Colour.PEACH);
+				b.tame(player(s));
+				level.addFreshEntity(b);
+				birds.add(b);
+			}
+			birds.get(0).pairWith(birds.get(1));
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+			return birds;
+		});
+		ctx.waitTicks(5);
+		server.runOnServer(s -> {
+			loves.get(0).mobInteract(player(s), InteractionHand.MAIN_HAND);
+			loves.get(2).mobInteract(player(s), InteractionHand.MAIN_HAND);
+		});
+		ctx.waitTicks(200);
+		java.util.function.Function<MinecraftServer, Lovebird> loveChick = s -> {
+			List<Lovebird> chicks = s.overworld().getEntitiesOfClass(Lovebird.class, new AABB(home).inflate(16), b -> b.isBaby());
+			return chicks.isEmpty() ? null : chicks.getFirst();
+		};
+		check(server.computeOnServer(s -> loveChick.apply(s) == null), "a lovebird fed beside one that isn't its partner makes no chick");
+		server.runOnServer(s -> loves.get(1).mobInteract(player(s), InteractionHand.MAIN_HAND));
+		check(waitFor(ctx, server, 600, s -> loveChick.apply(s) != null), "a lovebird fed with its partner makes a chick");
+		server.runOnServer(s -> player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY));
+		server.runCommand("kill @e[type=little_birds:lovebird]");
 	}
 
 	private static void usePerch(TestServerContext server, BlockPos perch) {

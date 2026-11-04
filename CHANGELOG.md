@@ -13,6 +13,10 @@ Two more birds, for Minecraft 26.3 on Fabric and NeoForge. Worlds from 0.1.0 kee
   that lives in a pair. Two lovebirds that meet pair up for good, keep together, call the same
   perch home and sit on it side by side. Their chirps are cut from recordings of real lovebirds.
   Wild lovebirds live in savannas, always two at a time.
+- Chicks: feed seeds to two tamed birds of the same kind near each other and they make a chick,
+  in one parent's colour, yours like its parents. It's small, follows its parents, grows up in
+  about twenty minutes, and is too little for a shoulder until then. Lovebirds breed only with
+  their partner.
 
 ## 0.1.0: Someone small is glad you're home
 

@@ -29,8 +29,10 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.FlyingMoveControl;
+import net.minecraft.world.entity.ai.goal.BreedGoal;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
+import net.minecraft.world.entity.ai.goal.FollowParentGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
@@ -148,9 +150,10 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		return super.finalizeSpawn(level, difficulty, reason, groupData);
 	}
 
+	/** Chicks: a bird can be a baby, a small one that grows up in about twenty minutes. */
 	@Override
 	protected boolean canBeABaby() {
-		return false;
+		return true;
 	}
 
 	@Override
@@ -161,8 +164,10 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		this.goalSelector.addGoal(1, new RoostGoal(this));
 		this.goalSelector.addGoal(2, new SitWhenOrderedToGoal(this));
 		this.goalSelector.addGoal(2, new StayHomeFollowOwnerGoal(this));
+		this.goalSelector.addGoal(2, new BreedGoal(this, 1.0));
 		this.goalSelector.addGoal(2, new WaterAvoidingRandomFlyingGoal(this, 1.0));
 		this.goalSelector.addGoal(3, new FindPerchGoal(this));
+		this.goalSelector.addGoal(4, new FollowParentGoal(this, 1.1));
 		// No LandOnOwnersShoulderGoal: a little bird rides a shoulder only when asked.
 	}
 
@@ -447,8 +452,12 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 			}
 			return InteractionResult.SUCCESS;
 		}
-		if (this.isTame() && this.isOwnedBy(player) && player.isShiftKeyDown() && stack.isEmpty()) {
-			// Sneak-use: onto the shoulder, or off it.
+		if (this.isTame() && this.isOwnedBy(player) && this.isFood(stack)) {
+			// Seeds for a tamed bird: vanilla's breeding (hearts, then a chick), or a chick growing up a little.
+			return super.mobInteract(player, hand);
+		}
+		if (this.isTame() && this.isOwnedBy(player) && player.isShiftKeyDown() && stack.isEmpty() && !this.isBaby()) {
+			// Sneak-use: onto the shoulder, or off it. A chick is too small for a shoulder.
 			if (!this.level().isClientSide()) {
 				if (this.isOnShoulder()) {
 					this.setOnShoulder(false);
@@ -467,9 +476,10 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		return super.mobInteract(player, hand);
 	}
 
+	/** Seeds, the same food that tames: a tamed bird fed seeds is ready to breed. */
 	@Override
 	public boolean isFood(ItemStack stack) {
-		return false;
+		return stack.is(ItemTags.PARROT_FOOD);
 	}
 
 	/**
@@ -484,14 +494,24 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		return level.getBlockState(pos.below()).is(BlockTags.PARROTS_SPAWNABLE_ON) && isBrightEnoughToSpawn(level, pos);
 	}
 
+	/** Two tamed birds of the same kind, both fed, can breed; wild ones don't. */
 	@Override
 	public boolean canMate(Animal partner) {
-		return false;
+		return this.isTame() && partner instanceof LittleBird other && other.isTame() && super.canMate(partner);
 	}
 
+	/** The chick: the same kind of bird, in one parent's colour at random, belonging to the same owner. */
 	@Override
 	public @Nullable AgeableMob getBreedOffspring(ServerLevel level, AgeableMob partner) {
-		return null;
+		LittleBird chick = (LittleBird) this.getType().create(level, EntitySpawnReason.BREEDING);
+		if (chick == null) {
+			return null;
+		}
+		LittleBird other = (LittleBird) partner;
+		chick.setVariant(this.random.nextBoolean() ? this.getVariant() : other.getVariant());
+		chick.setOwnerReference(this.getOwnerReference());
+		chick.setTame(true, false);
+		return chick;
 	}
 
 	@Override

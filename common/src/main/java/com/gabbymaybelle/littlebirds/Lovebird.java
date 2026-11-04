@@ -10,6 +10,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -131,6 +132,12 @@ public class Lovebird extends LittleBird {
 		this.partnerId = partner.isEmpty() ? null : UUID.fromString(partner);
 	}
 
+	/** A lovebird breeds only with its partner. */
+	@Override
+	public boolean canMate(Animal partner) {
+		return partner == this.getPartner() && super.canMate(partner);
+	}
+
 	@Override
 	public SoundEvent chatterSound() {
 		return Sounds.LOVEBIRD_CHATTER.get();
@@ -157,11 +164,12 @@ public class Lovebird extends LittleBird {
 
 		@Override
 		public boolean canUse() {
-			if (this.bird.hasPartner() || this.bird.getRandom().nextInt(reducedTickDelay(60)) != 0) {
+			if (this.bird.hasPartner() || this.bird.isBaby() || this.bird.getRandom().nextInt(reducedTickDelay(60)) != 0) {
 				return false;
 			}
+			// Grown birds only: a chick pairs once it has grown up.
 			List<Lovebird> alone = this.bird.level().getEntitiesOfClass(Lovebird.class, this.bird.getBoundingBox().inflate(PAIR_REACH),
-					other -> other != this.bird && other.isAlive() && !other.hasPartner());
+					other -> other != this.bird && other.isAlive() && !other.hasPartner() && !other.isBaby());
 			this.found = alone.isEmpty() ? null : alone.stream().min((a, b) -> Double.compare(a.distanceToSqr(this.bird), b.distanceToSqr(this.bird))).get();
 			return this.found != null;
 		}

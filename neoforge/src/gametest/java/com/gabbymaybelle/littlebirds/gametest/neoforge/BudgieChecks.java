@@ -1,6 +1,7 @@
 package com.gabbymaybelle.littlebirds.gametest.neoforge;
 
 import com.gabbymaybelle.littlebirds.Birds;
+import java.util.List;
 import com.gabbymaybelle.littlebirds.Budgie;
 import com.gabbymaybelle.littlebirds.Cockatiel;
 import com.gabbymaybelle.littlebirds.Lovebird;
@@ -32,6 +33,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModList;
@@ -460,6 +462,69 @@ final class BudgieChecks {
 				}
 				default -> {
 				}
+			}
+		});
+	}
+
+	/** Two tamed budgies fed seeds fall in love and make a small chick in one parent's colour that belongs to the same owner. */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: breeding needs an owner
+	static void breeding(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos at = helper.absolutePos(new BlockPos(3, 1, 3));
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+		player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+		Budgie a = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+		Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+		a.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 1.5, 0, 0);
+		b.snapTo(at.getX() + 1.5, at.getY(), at.getZ() + 1.5, 0, 0);
+		a.setColour(Budgie.Colour.YELLOW);
+		b.setColour(Budgie.Colour.WHITE);
+		a.tame(player);
+		b.tame(player);
+		level.addFreshEntity(a);
+		level.addFreshEntity(b);
+		int[] ticks = {0};
+		boolean[] done = {false};
+		Budgie[] born = {null};
+		// Only this test's birds: tests run side by side, and a wider sweep once took another test's bird.
+		Runnable tidy = () -> {
+			a.discard();
+			b.discard();
+			if (born[0] != null) {
+				born[0].discard();
+			}
+			level.getServer().getPlayerList().remove(player);
+		};
+		helper.runAfterDelay(5, () -> {
+			a.mobInteract(player, InteractionHand.MAIN_HAND);
+			b.mobInteract(player, InteractionHand.MAIN_HAND);
+			try {
+				helper.assertTrue(a.isInLove() && b.isInLove(), "seeds should put two tamed budgies in love");
+			} catch (RuntimeException e) {
+				tidy.run();
+				throw e;
+			}
+		});
+		helper.onEachTick(() -> {
+			ticks[0]++;
+			if (done[0]) {
+				return;
+			}
+			List<Budgie> chicks = level.getEntitiesOfClass(Budgie.class, new AABB(at).inflate(6), c -> c.isBaby() && c.isOwnedBy(player));
+			if (!chicks.isEmpty()) {
+				done[0] = true;
+				Budgie chick = chicks.getFirst();
+				born[0] = chick;
+				System.out.println("[little_birds_gametest] breeding: chick after " + ticks[0] + " ticks, colour " + chick.getColour() + ", tame " + chick.isTame() + ", scale " + chick.getAgeScale());
+				try {
+					helper.assertTrue(chick.getColour() == Budgie.Colour.YELLOW || chick.getColour() == Budgie.Colour.WHITE, "the chick should have a parent's colour (got " + chick.getColour() + ")");
+					helper.assertTrue(chick.isTame() && chick.isOwnedBy(player), "the chick should belong to its parents' owner");
+					helper.assertTrue(chick.getAgeScale() < 1.0F, "the chick should be small");
+				} finally {
+					tidy.run();
+				}
+				helper.succeed();
 			}
 		});
 	}
