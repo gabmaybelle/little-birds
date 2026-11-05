@@ -3,6 +3,7 @@ package com.gabbymaybelle.littlebirds.gametest.neoforge;
 import com.gabbymaybelle.littlebirds.Birds;
 import java.util.List;
 import com.gabbymaybelle.littlebirds.Budgie;
+import com.gabbymaybelle.littlebirds.Canary;
 import com.gabbymaybelle.littlebirds.Cockatiel;
 import com.gabbymaybelle.littlebirds.Foods;
 import com.gabbymaybelle.littlebirds.Lovebird;
@@ -690,6 +691,89 @@ final class BudgieChecks {
 
 	private static int weight(ServerLevel level, ResourceKey<Biome> biome) {
 		return weightOf(level, biome, Birds.BUDGIE.get());
+	}
+
+	/**
+	 * The canary: registered with its egg, 4 health, keeps its colour, seeds tame it, a sneak-use
+	 * leaves it on the ground; with the clock set to the next morning (this test runs in a batch
+	 * of its own) a tamed one sings once and a millet spray gets a song; flower forests list it at
+	 * weight 10 and savannas not at all.
+	 */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: taming needs a player
+	static void canary(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos at = helper.absolutePos(new BlockPos(2, 1, 3));
+		helper.assertTrue(BuiltInRegistries.ENTITY_TYPE.containsKey(Birds.CANARY_ID), "the canary should be registered");
+		helper.assertTrue(Birds.CANARY_SPAWN_EGG.get() instanceof SpawnEggItem, "the canary spawn egg should be registered");
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Canary bird = Birds.CANARY.get().create(level, EntitySpawnReason.COMMAND);
+		Runnable tidy = () -> {
+			bird.discard();
+			level.getServer().getPlayerList().remove(player);
+		};
+		int flower;
+		int savanna;
+		try {
+			player.setGameMode(GameType.CREATIVE);
+			player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+			bird.snapTo(at.getX() + 1.5, at.getY(), at.getZ() + 0.5, 0, 0);
+			bird.setColour(Canary.Colour.WHITE);
+			bird.setNoAi(true);
+			level.addFreshEntity(bird);
+			double health = bird.getAttributeValue(Attributes.MAX_HEALTH);
+			helper.assertTrue(health == 4.0, "the canary should have 4 health (got " + health + ")");
+			helper.assertTrue(bird.getColour() == Canary.Colour.WHITE, "the canary should keep its colour (got " + bird.getColour() + ")");
+			int tries = 0;
+			while (tries < 60 && !bird.isTame()) {
+				tries++;
+				bird.mobInteract(player, InteractionHand.MAIN_HAND);
+			}
+			helper.assertTrue(bird.isTame(), "seeds should tame a canary (" + tries + " tries)");
+			player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+			player.setShiftKeyDown(true);
+			bird.mobInteract(player, InteractionHand.MAIN_HAND);
+			player.setShiftKeyDown(false);
+			helper.assertTrue(!bird.isOnShoulder() && !bird.isOrderedToSit(), "a sneak-use should leave a canary where it is");
+			long clock = level.getOverworldClockTime();
+			helper.setTime((Math.floorDiv(clock, 24000L) + 1) * 24000L + 1000L);
+			clock = level.getOverworldClockTime();
+			helper.assertTrue(Canary.isMorning(clock), "the clock should read morning (clock " + clock + ")");
+			flower = weightOf(level, Biomes.FLOWER_FOREST, Birds.CANARY.get());
+			savanna = weightOf(level, Biomes.SAVANNA, Birds.CANARY.get());
+			bird.setNoAi(false);
+			bird.setOrderedToSit(true);
+		} catch (RuntimeException e) {
+			tidy.run();
+			throw e;
+		}
+		int[] ticks = {0};
+		boolean[] done = {false};
+		helper.onEachTick(() -> {
+			ticks[0]++;
+			if (done[0]) {
+				return;
+			}
+			if (bird.songs < 1) {
+				if (ticks[0] % 100 == 0) {
+					System.out.println("[little_birds_gametest] canary: tick " + ticks[0] + ", no song yet, on ground " + bird.onGround());
+				}
+				return;
+			}
+			done[0] = true;
+			try {
+				helper.assertTrue(bird.songs == 1, "a canary should sing once in the morning (songs " + bird.songs + ")");
+				player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Foods.MILLET_SPRAY.get(), 1));
+				bird.mobInteract(player, InteractionHand.MAIN_HAND);
+				System.out.println("[little_birds_gametest] canary: sang after " + ticks[0] + " ticks, songs after a treat " + bird.songs + ", flower forest weight " + flower + ", savanna weight " + savanna);
+				helper.assertTrue(bird.songs == 2, "a millet spray should get a song (songs " + bird.songs + ")");
+				helper.assertTrue(flower == 10, "flower forests should spawn canaries at weight 10 (got " + flower + ")");
+				helper.assertTrue(savanna == 0, "savannas should not spawn canaries (got " + savanna + ")");
+			} finally {
+				tidy.run();
+			}
+			helper.succeed();
+		});
 	}
 
 	private static int weightOf(ServerLevel level, ResourceKey<Biome> biome, EntityType<?> type) {

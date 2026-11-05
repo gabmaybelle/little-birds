@@ -76,5 +76,39 @@
 			"little_birds:lovebird/settle2",
 			"little_birds:lovebird/settle3"
 		]
+	},
+	"canary_chatter": {
+		"subtitle": "subtitles.little_birds.canary_chatter",
+		"sounds": [
+			"little_birds:canary/chatter1",
+			"little_birds:canary/chatter2",
+			"little_birds:canary/chatter3",
+			"little_birds:canary/chatter4",
+			"little_birds:canary/chatter5"
+		]
+	},
+	"canary_greeting": {
+		"subtitle": "subtitles.little_birds.canary_greeting",
+		"sounds": [
+			"little_birds:canary/greeting1",
+			"little_birds:canary/greeting2",
+			"little_birds:canary/greeting3"
+		]
+	},
+	"canary_settle": {
+		"subtitle": "subtitles.little_birds.canary_settle",
+		"sounds": [
+			"little_birds:canary/settle1",
+			"little_birds:canary/settle2",
+			"little_birds:canary/settle3"
+		]
+	},
+	"canary_song": {
+		"subtitle": "subtitles.little_birds.canary_song",
+		"sounds": [
+			"little_birds:canary/song1",
+			"little_birds:canary/song2",
+			"little_birds:canary/song3"
+		]
 	}
 }

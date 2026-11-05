@@ -221,6 +221,54 @@ def lovebird(name, p):
 	img.save(TEX / "entity/lovebird" / f"lovebird_{name}.png")
 
 
+# Canary: B body, Y the lighter face and breast, C the crown, W wing, T tail, E eye, L feet, K beak.
+CANARY = {
+	"yellow": dict(B="#f2dc48", Y="#f9ec7c", C="#e6c93a", W="#d7bf38", T="#c9b232", E="#141414", L="#d9a8a0", K="#ead9ae"),
+	"red": dict(B="#ec6a2c", Y="#f59256", C="#de5e22", W="#d05820", T="#c4521d", E="#141414", L="#d9a8a0", K="#ead9ae"),
+	"white": dict(B="#f6f6f2", Y="#ffffff", C="#ecece6", W="#e1e1db", T="#d8d8d2", E="#141414", L="#d9a8a0", K="#ead9ae"),
+}
+
+
+def canary(name, p):
+	"""The canary's texture in CanaryModel's layout (32x32): head 2x2x2 at 0,0; cap 2x1x2 at 10,0; beak 1x1x1
+	at 20,0; body 3x4x3 at 0,6; wing 1x3x3 at 12,6; tail feather 1x4x1 at 22,6; leg 1x2x1 at 12,13."""
+	img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+
+	head = Box(img, 0, 0, 2, 2, 2)
+	head.fill(p["B"])
+	# A lighter face and throat; the eye sits high at the front of each side (the sides are mirrored in the layout).
+	head.paint("front", lambda x, y, w, h: p["Y"])
+	for side, front in (("left", 0), ("right", 1)):
+		head.paint(side, lambda x, y, w, h, front=front: p["E"] if (x, y) == (front, 0) else (p["Y"] if y == 1 else p["B"]))
+
+	cap = Box(img, 10, 0, 2, 1, 2)
+	cap.fill(p["C"])
+	cap.paint("front", lambda x, y, w, h: p["Y"])
+
+	Box(img, 20, 0, 1, 1, 1).fill(p["K"])
+
+	body = Box(img, 0, 6, 3, 4, 3)
+	body.fill(p["B"])
+	# A lighter breast, the mantle a shade deeper.
+	body.paint("front", lambda x, y, w, h: p["Y"])
+	body.paint("top", lambda x, y, w, h: p["C"])
+	body.paint("back", lambda x, y, w, h: p["C"] if y < 2 else p["B"])
+
+	wing = Box(img, 12, 6, 1, 3, 3)
+	wing.fill(p["W"])
+	# The flight feathers along the bottom edge of the folded wing are darker.
+	for side in ("left", "right"):
+		wing.paint(side, lambda x, y, w, h: shade(p["W"], 0.82) if y == h - 1 else p["W"])
+
+	tail = Box(img, 22, 6, 1, 4, 1)
+	tail.fill(p["T"])
+
+	Box(img, 12, 13, 1, 2, 1).fill(p["L"])
+
+	(TEX / "entity/canary").mkdir(parents=True, exist_ok=True)
+	img.save(TEX / "entity/canary" / f"canary_{name}.png")
+
+
 EGG = """
 ................
 ......oooo......
@@ -329,6 +377,9 @@ if __name__ == "__main__":
 		lovebird(name, palette)
 	egg("cockatiel", {"o": "#2e2119", "B": "#8d8d93", "b": "#6f6f76", "Y": "#f0dc5a"})
 	egg("lovebird", {"o": "#2e2119", "B": "#6cc24a", "b": "#3f9a3a", "Y": "#f29a6a"})
+	for name, palette in CANARY.items():
+		canary(name, palette)
+	egg("canary", {"o": "#2e2119", "B": "#f2dc48", "b": "#c9b232", "Y": "#ec6a2c"})
 	perch()
 	millet()
 	print("art written")

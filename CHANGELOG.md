@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- The canary: a song bird a touch smaller than a budgie, in three colours (yellow, the red
+  factor, white), with a short straight beak and a notched tail. Every morning a tamed canary
+  sings its song, several seconds of it, from wherever it sits; a millet spray gets a song too.
+  Its tweets, its hello trill and its song are cut from recordings of real canaries. It keeps to
+  its perch: a sneak-use doesn't put it on your shoulder. Tamed with seeds like the rest, with the
+  perch, the greeting, the call and chicks all the same. Wild canaries live in flower forests,
+  meadows and cherry groves, in twos and threes (`#little_birds:canary_spawns`, for pack makers).
 - The millet spray, the one treat, crafted from wheat and seeds: it tames a wild bird on the
   first try, a bird comes to the hand that holds it, and a tamed bird fed one gives a happy bob.
   A treat is not a meal: a bird that has just had one takes nothing more for half a minute.

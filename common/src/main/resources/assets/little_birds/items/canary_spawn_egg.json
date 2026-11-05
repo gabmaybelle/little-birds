@@ -1,0 +1,6 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "little_birds:item/canary_spawn_egg"
+	}
+}

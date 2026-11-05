@@ -2,6 +2,8 @@ package com.gabbymaybelle.littlebirds.fabric;
 
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.client.BudgieModel;
+import com.gabbymaybelle.littlebirds.client.CanaryModel;
+import com.gabbymaybelle.littlebirds.client.CanaryRenderer;
 import com.gabbymaybelle.littlebirds.client.CockatielModel;
 import com.gabbymaybelle.littlebirds.client.CockatielRenderer;
 import com.gabbymaybelle.littlebirds.client.LovebirdModel;
@@ -21,5 +23,7 @@ public class LittleBirdsFabricClient implements ClientModInitializer {
 		EntityRendererRegistry.register(Birds.COCKATIEL.get(), CockatielRenderer::new);
 		ModelLayerRegistry.registerModelLayer(LovebirdModel.LAYER, LovebirdModel::createBodyLayer);
 		EntityRendererRegistry.register(Birds.LOVEBIRD.get(), LovebirdRenderer::new);
+		ModelLayerRegistry.registerModelLayer(CanaryModel.LAYER, CanaryModel::createBodyLayer);
+		EntityRendererRegistry.register(Birds.CANARY.get(), CanaryRenderer::new);
 	}
 }

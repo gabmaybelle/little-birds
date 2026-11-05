@@ -18,6 +18,8 @@ public class BirdRenderState extends LivingEntityRenderState {
 	public float greeting;
 	/** How far into a head shake (a refused food) the bird is, in ticks; 0 when it isn't shaking. */
 	public float shaking;
+	/** How far into its song the bird is, in ticks; 0 when it isn't singing. */
+	public float singing;
 	/** On the shoulder of the player looking out of their own eyes: not drawn. */
 	public boolean hidden;
 }

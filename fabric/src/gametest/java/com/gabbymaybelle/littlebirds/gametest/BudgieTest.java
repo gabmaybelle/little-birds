@@ -2,6 +2,7 @@ package com.gabbymaybelle.littlebirds.gametest;
 
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.Budgie;
+import com.gabbymaybelle.littlebirds.Canary;
 import com.gabbymaybelle.littlebirds.Cockatiel;
 import com.gabbymaybelle.littlebirds.Foods;
 import com.gabbymaybelle.littlebirds.Lovebird;
@@ -31,6 +32,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.SpawnPlacements;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -77,6 +79,7 @@ public class BudgieTest implements FabricClientGameTest {
 			shoulder(ctx, server, home);
 			cockatiel(ctx, server, home);
 			lovebirds(ctx, server, home);
+			canary(ctx, server, home);
 			breeding(ctx, server, home);
 			eating(ctx, server, home);
 			spawnRules(server, home.offset(6, 0, 6));
@@ -107,7 +110,8 @@ public class BudgieTest implements FabricClientGameTest {
 	private void sounds(ClientGameTestContext ctx) {
 		for (var sound : List.of(Sounds.BUDGIE_CHATTER, Sounds.BUDGIE_GREETING, Sounds.BUDGIE_SETTLE,
 				Sounds.COCKATIEL_CHATTER, Sounds.COCKATIEL_GREETING, Sounds.COCKATIEL_SETTLE,
-				Sounds.LOVEBIRD_CHATTER, Sounds.LOVEBIRD_GREETING, Sounds.LOVEBIRD_SETTLE)) {
+				Sounds.LOVEBIRD_CHATTER, Sounds.LOVEBIRD_GREETING, Sounds.LOVEBIRD_SETTLE,
+				Sounds.CANARY_CHATTER, Sounds.CANARY_GREETING, Sounds.CANARY_SETTLE, Sounds.CANARY_SONG)) {
 			var id = sound.get().location();
 			String found = ctx.computeOnClient(mc -> {
 				var event = mc.getSoundManager().getSoundEvent(id);
@@ -544,6 +548,133 @@ public class BudgieTest implements FabricClientGameTest {
 		server.runOnServer(s -> {
 			s.overworld().setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
 			s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		});
+	}
+
+	/**
+	 * The canary: registered with its egg, it lives with 4 health, keeps its colour and is tamed
+	 * with seeds; a sneak-use leaves it where it is (it never rides a shoulder); in the morning a
+	 * tamed canary sings once, a millet spray gets a song too, at noon it is quiet, and the next
+	 * morning it sings again; flower forests and meadows list it, savannas don't. A still one is
+	 * posed beside a budgie for size, then the three colours side on.
+	 */
+	private void canary(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		check(BuiltInRegistries.ENTITY_TYPE.containsKey(Birds.CANARY_ID), "the canary is registered");
+		check(Birds.CANARY_SPAWN_EGG.get() instanceof SpawnEggItem, "the canary spawn egg is registered");
+		Canary bird = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Canary b = Birds.CANARY.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 1.5, home.getY(), home.getZ() + 1.5, 0, 0);
+			b.setColour(Canary.Colour.RED);
+			b.setNoAi(true);
+			level.addFreshEntity(b);
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+			return b;
+		});
+		ctx.waitTicks(20);
+		check(bird.isAlive(), "a canary put in the world is alive");
+		double health = server.computeOnServer(s -> bird.getAttributeValue(Attributes.MAX_HEALTH));
+		check(health == 4.0, "the canary has 4 health (got " + health + ")");
+		check(bird.getColour() == Canary.Colour.RED, "the canary kept its colour (got " + bird.getColour() + ")");
+		int tries = 0;
+		while (tries < 60 && !bird.isTame()) {
+			tries++;
+			server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
+			ctx.waitTicks(1);
+		}
+		check(bird.isTame(), "seeds tame a canary (after " + tries + " tries)");
+		// No shoulder: a sneak-use with an empty hand leaves it where it is.
+		server.runOnServer(s -> {
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+			player(s).setShiftKeyDown(true);
+			bird.mobInteract(player(s), InteractionHand.MAIN_HAND);
+			player(s).setShiftKeyDown(false);
+		});
+		ctx.waitTicks(5);
+		check(!bird.isOnShoulder() && !bird.isOrderedToSit(), "a sneak-use leaves a canary where it is: no shoulder");
+		// The morning song: it is morning, and a tamed canary with its wits about it sings once.
+		server.runCommand("time set day");
+		server.runOnServer(s -> {
+			bird.setNoAi(false);
+			bird.setOrderedToSit(true);
+		});
+		check(waitFor(ctx, server, 200, s -> bird.songs == 1), "in the morning a tamed canary sings (songs: " + bird.songs + ")");
+		ctx.waitTicks(60);
+		check(bird.songs == 1, "it sings once a morning (songs: " + bird.songs + ")");
+		server.runOnServer(s -> {
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Foods.MILLET_SPRAY.get(), 1));
+			bird.mobInteract(player(s), InteractionHand.MAIN_HAND);
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+		});
+		ctx.waitTicks(5);
+		check(bird.songs == 2, "a millet spray gets a song (songs: " + bird.songs + ")");
+		server.runCommand("time set noon");
+		ctx.waitTicks(60);
+		check(bird.songs == 2, "at noon it is quiet (songs: " + bird.songs + ")");
+		server.runCommand("time add 19000");
+		check(waitFor(ctx, server, 200, s -> bird.songs == 3), "the next morning it sings again (songs: " + bird.songs + ")");
+		check(weightOf(server, Biomes.FLOWER_FOREST, Birds.CANARY.get()) == 10, "flower forests spawn canaries at weight 10");
+		check(weightOf(server, Biomes.MEADOW, Birds.CANARY.get()) == 10, "meadows spawn canaries at weight 10");
+		check(weightOf(server, Biomes.SAVANNA, Birds.CANARY.get()) == 0, "savannas don't spawn canaries");
+		server.runCommand("kill @e[type=little_birds:canary]");
+		server.runCommand("kill @e[type=minecraft:parrot]");
+		server.runCommand("kill @e[type=little_birds:cockatiel]");
+		// The owner is told of a pet's death whatever the game rules say: let the chat fade before the shots.
+		ctx.waitTicks(220);
+		// Side on, for size: a still yellow canary beside a still green budgie.
+		server.runOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Canary c = Birds.CANARY.get().create(level, EntitySpawnReason.COMMAND);
+			c.snapTo(home.getX() + 3.5, home.getY(), home.getZ() + 0.5, 0, 0);
+			c.setColour(Canary.Colour.YELLOW);
+			c.setNoAi(true);
+			c.setOnGround(true);
+			level.addFreshEntity(c);
+			Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 3.5, home.getY(), home.getZ() - 1.0, 0, 0);
+			b.setColour(Budgie.Colour.GREEN);
+			b.setNoAi(true);
+			b.setOnGround(true);
+			level.addFreshEntity(b);
+			player(s).teleportTo(level, home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), -90.0F, 20.0F, false);
+		});
+		ctx.waitTicks(10);
+		ctx.takeScreenshot("canary");
+		server.runCommand("kill @e[type=little_birds:canary]");
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		ctx.waitTicks(220);
+		// The three colours in a row by day, side on from the west.
+		server.runOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Canary.Colour[] colours = Canary.Colour.COLOURS;
+			for (int i = 0; i < colours.length; i++) {
+				Canary shown = Birds.CANARY.get().create(level, EntitySpawnReason.COMMAND);
+				shown.snapTo(home.getX() + 3.5, home.getY(), home.getZ() - 1.0 + i * 1.2, 0, 0);
+				shown.setColour(colours[i]);
+				shown.setNoAi(true);
+				shown.setOnGround(true);
+				level.addFreshEntity(shown);
+			}
+			player(s).teleportTo(level, home.getX() + 0.5, home.getY(), home.getZ() + 0.2, java.util.Set.of(), -90.0F, 15.0F, false);
+		});
+		ctx.waitTicks(10);
+		ctx.takeScreenshot("canary_colours_side");
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
+		server.runCommand("kill @e[type=little_birds:canary]");
+		ctx.waitTicks(5);
+	}
+
+	/** A bird's spawn weight in a biome, 0 if it isn't listed. */
+	private static int weightOf(TestServerContext server, ResourceKey<Biome> biome, EntityType<?> type) {
+		return server.computeOnServer(s -> {
+			Biome b = s.registryAccess().lookupOrThrow(Registries.BIOME).getOrThrow(biome).value();
+			var entry = b.getAttributes().get(EnvironmentAttributes.NATURAL_MOB_SPAWNS);
+			if (entry == null) {
+				return 0;
+			}
+			MobSpawnSettings spawns = (MobSpawnSettings) entry.argument();
+			return spawns.getMobsToSpawn(MobCategory.CREATURE).unwrap().stream()
+					.filter(w -> w.value().type() == type).mapToInt(w -> w.weight()).sum();
 		});
 	}
 

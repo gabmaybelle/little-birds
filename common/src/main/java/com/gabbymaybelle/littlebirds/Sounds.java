@@ -32,6 +32,15 @@ public final class Sounds {
 	/** The soft call as it settles on its perch for the night. */
 	public static final Supplier<SoundEvent> LOVEBIRD_SETTLE = sound("lovebird_settle");
 
+	/** A canary's little tweets and calls. */
+	public static final Supplier<SoundEvent> CANARY_CHATTER = sound("canary_chatter");
+	/** The trill when its owner comes home. */
+	public static final Supplier<SoundEvent> CANARY_GREETING = sound("canary_greeting");
+	/** The soft call as it settles on its perch for the night. */
+	public static final Supplier<SoundEvent> CANARY_SETTLE = sound("canary_settle");
+	/** The song: several seconds of it, every morning and for a treat. */
+	public static final Supplier<SoundEvent> CANARY_SONG = sound("canary_song");
+
 	private Sounds() {
 	}
 

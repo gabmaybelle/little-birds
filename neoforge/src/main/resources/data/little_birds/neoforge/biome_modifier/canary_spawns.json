@@ -1,0 +1,13 @@
+{
+	"type": "neoforge:add_spawns",
+	"biomes": "#little_birds:canary_spawns",
+	"spawners": {
+		"type": "little_birds:canary",
+		"weight": 10,
+		"count": {
+			"type": "minecraft:uniform",
+			"min_inclusive": 2,
+			"max_inclusive": 3
+		}
+	}
+}

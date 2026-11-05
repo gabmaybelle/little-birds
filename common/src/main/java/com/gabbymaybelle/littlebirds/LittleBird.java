@@ -102,6 +102,12 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 	private static final byte SHAKE_EVENT = 70;
 	/** Client side: ticks left of the head shake. */
 	public int shakeTicks;
+	/** The entity event that tells clients the bird has begun its song. */
+	private static final byte SONG_EVENT = 71;
+	/** Client side: ticks left of the song. */
+	public int songTicks;
+	/** How many songs it has sung since it was loaded (for the tests). */
+	public int songs;
 	/** Ticks until it will take another treat, and another snack. */
 	private int fullOfTreat;
 	private int fullOfSnack;
@@ -144,6 +150,37 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 
 	/** The soft sound as it settles on its perch for the night. */
 	public abstract SoundEvent settleSound();
+
+	/** Its song, if it has one (a song bird's long morning song); null for a bird that only chatters. */
+	public @Nullable SoundEvent songSound() {
+		return null;
+	}
+
+	/** How long the song pose holds on the client, in ticks. */
+	protected int songTicks() {
+		return 140;
+	}
+
+	/** Whether this bird rides its owner's shoulder when asked; a song bird keeps to its perch. */
+	public boolean ridesShoulders() {
+		return true;
+	}
+
+	/** Sings its song, if it has one: heard around it, with the singing pose on every client. */
+	public void sing() {
+		SoundEvent song = this.songSound();
+		if (song == null) {
+			return;
+		}
+		this.songs++;
+		this.playSound(song, 1.0F, this.getVoicePitch());
+		this.level().broadcastEntityEvent(this, SONG_EVENT);
+	}
+
+	/** What a tamed bird does for a treat: a happy bob; a song bird sings instead. */
+	protected void enjoyTreat() {
+		this.level().broadcastEntityEvent(this, GREET_EVENT);
+	}
 
 	/** Where along the bar it sits, in blocks from the middle: 0 for a bird on its own; a pair sits either side. */
 	public double seatOffset() {
@@ -280,6 +317,9 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		}
 		if (this.shakeTicks > 0) {
 			this.shakeTicks--;
+		}
+		if (this.songTicks > 0) {
+			this.songTicks--;
 		}
 		if (this.fullOfTreat > 0) {
 			this.fullOfTreat--;
@@ -419,6 +459,8 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 			this.greetTicks = this.greetingTicks();
 		} else if (id == SHAKE_EVENT) {
 			this.shakeTicks = 20;
+		} else if (id == SONG_EVENT) {
+			this.songTicks = this.songTicks();
 		} else {
 			super.handleEntityEvent(id);
 		}
@@ -502,6 +544,10 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 			// Seeds for a tamed bird: vanilla's breeding (hearts, then a chick), or a chick growing up a little.
 			return super.mobInteract(player, hand);
 		}
+		if (player.isShiftKeyDown() && stack.isEmpty() && !this.ridesShoulders()) {
+			// A song bird keeps to its perch: a sneak-use asks nothing of it.
+			return InteractionResult.PASS;
+		}
 		if (this.isTame() && this.isOwnedBy(player) && player.isShiftKeyDown() && stack.isEmpty() && !this.isBaby()) {
 			// Sneak-use: onto the shoulder, or off it. A chick is too small for a shoulder.
 			if (!this.level().isClientSide()) {
@@ -551,7 +597,7 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		}
 		this.fullOfTreat = Foods.TREAT_FULL;
 		this.treats++;
-		this.level().broadcastEntityEvent(this, GREET_EVENT);
+		this.enjoyTreat();
 		return InteractionResult.SUCCESS;
 	}
 

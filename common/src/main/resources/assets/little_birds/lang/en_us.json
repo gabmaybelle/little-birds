@@ -2,9 +2,11 @@
 	"entity.little_birds.budgie": "Budgie",
 	"entity.little_birds.cockatiel": "Cockatiel",
 	"entity.little_birds.lovebird": "Lovebird",
+	"entity.little_birds.canary": "Canary",
 	"item.little_birds.budgie_spawn_egg": "Budgie Spawn Egg",
 	"item.little_birds.cockatiel_spawn_egg": "Cockatiel Spawn Egg",
 	"item.little_birds.lovebird_spawn_egg": "Lovebird Spawn Egg",
+	"item.little_birds.canary_spawn_egg": "Canary Spawn Egg",
 	"block.little_birds.perch": "Perch",
 	"item.little_birds.millet_spray": "Millet Spray",
 	"subtitles.little_birds.budgie_chatter": "Budgie chatters",
@@ -15,5 +17,9 @@
 	"subtitles.little_birds.cockatiel_settle": "Cockatiel settles down",
 	"subtitles.little_birds.lovebird_chatter": "Lovebird chirps",
 	"subtitles.little_birds.lovebird_greeting": "Lovebird chirps hello",
-	"subtitles.little_birds.lovebird_settle": "Lovebird settles down"
+	"subtitles.little_birds.lovebird_settle": "Lovebird settles down",
+	"subtitles.little_birds.canary_chatter": "Canary tweets",
+	"subtitles.little_birds.canary_greeting": "Canary trills hello",
+	"subtitles.little_birds.canary_settle": "Canary settles down",
+	"subtitles.little_birds.canary_song": "Canary sings"
 }
