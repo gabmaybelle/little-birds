@@ -41,6 +41,7 @@ public class BirdRenderer<T extends LittleBird, M extends EntityModel<BirdRender
 				: bird.isInSittingPose() || bird.isOnShoulder() ? BirdRenderState.Pose.SITTING
 				: bird.isFlying() ? BirdRenderState.Pose.FLYING : BirdRenderState.Pose.STANDING;
 		state.greeting = bird.greetTicks > 0 ? bird.greetTicks - partialTicks : 0.0F;
+		state.shaking = bird.shakeTicks > 0 ? bird.shakeTicks - partialTicks : 0.0F;
 		Minecraft minecraft = Minecraft.getInstance();
 		state.hidden = bird.isOnShoulder() && bird.getOwner() == minecraft.getCameraEntity() && minecraft.options.getCameraType().isFirstPerson();
 	}

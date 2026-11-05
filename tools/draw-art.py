@@ -250,6 +250,37 @@ def egg(name, pal):
 	img.save(TEX / "item" / f"{name}_spawn_egg.png")
 
 
+MILLET = """
+................
+..............o.
+.............oYo
+............oYyo
+..........ooYyo.
+.........oYYyo..
+........oYyyo...
+.......oYyoYo...
+......oYyooYo...
+.....oYyo.oyo...
+....oyyo..oo....
+...oBbo.........
+..oBbo..........
+.oBbo...........
+.obo............
+.oo.............
+"""
+
+
+def millet():
+	"""The millet spray item: a drooping sprig of golden grain on a brown stalk, in the house's outlined pixel style."""
+	pal = {"o": "#4a3a1e", "Y": "#f0d060", "y": "#c9a83a", "B": "#9a7a3a", "b": "#6e5426"}
+	img = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+	for y, row in enumerate(MILLET.strip("\n").split("\n")):
+		for x, ch in enumerate(row):
+			if ch != ".":
+				img.putpixel((x, y), rgb(pal[ch]))
+	img.save(TEX / "item/millet_spray.png")
+
+
 def perch():
 	"""The perch block's texture, in the layout models/block/perch.json reads: the base's top (0,0 to 6,6) and
 	sides (0,6 to 6,8) in oak plank; the post's sides (6,0 to 8,8); the bar's top, underside and sides
@@ -299,4 +330,5 @@ if __name__ == "__main__":
 	egg("cockatiel", {"o": "#2e2119", "B": "#8d8d93", "b": "#6f6f76", "Y": "#f0dc5a"})
 	egg("lovebird", {"o": "#2e2119", "B": "#6cc24a", "b": "#3f9a3a", "Y": "#f29a6a"})
 	perch()
+	millet()
 	print("art written")

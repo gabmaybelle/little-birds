@@ -16,6 +16,8 @@ public class BirdRenderState extends LivingEntityRenderState {
 	public Pose pose = Pose.STANDING;
 	/** How far into its greeting the bird is, in ticks with the frame's fraction; 0 when it isn't greeting. */
 	public float greeting;
+	/** How far into a head shake (a refused food) the bird is, in ticks; 0 when it isn't shaking. */
+	public float shaking;
 	/** On the shoulder of the player looking out of their own eyes: not drawn. */
 	public boolean hidden;
 }

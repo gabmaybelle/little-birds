@@ -4,6 +4,7 @@ import com.gabbymaybelle.littlebirds.Birds;
 import java.util.List;
 import com.gabbymaybelle.littlebirds.Budgie;
 import com.gabbymaybelle.littlebirds.Cockatiel;
+import com.gabbymaybelle.littlebirds.Foods;
 import com.gabbymaybelle.littlebirds.Lovebird;
 import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
@@ -596,6 +597,50 @@ final class BudgieChecks {
 				}
 			}
 		});
+	}
+
+	/** Millet spray tames at once and is refused by a full bird; a carrot heals a tamed bird; cocoa beans are refused and kept; a treat hurries a chick along. */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: feeding needs a player
+	static void eating(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos at = helper.absolutePos(new BlockPos(0, 2, 0));
+		helper.assertTrue(BuiltInRegistries.ITEM.containsKey(Foods.MILLET_SPRAY_ID), "the millet spray should be registered");
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		Budgie bird = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+		Budgie chick = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+		try {
+			player.setGameMode(GameType.SURVIVAL);
+			bird.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0, 0);
+			bird.setNoAi(true);
+			level.addFreshEntity(bird);
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Foods.MILLET_SPRAY.get(), 2));
+			bird.mobInteract(player, InteractionHand.MAIN_HAND);
+			helper.assertTrue(bird.isTame() && player.getMainHandItem().getCount() == 1, "millet spray should tame a wild budgie on the first try");
+			bird.mobInteract(player, InteractionHand.MAIN_HAND);
+			helper.assertTrue(player.getMainHandItem().getCount() == 1 && bird.treats == 1, "a full bird should take no second treat");
+			bird.setHealth(3.0F);
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.CARROT, 2));
+			bird.mobInteract(player, InteractionHand.MAIN_HAND);
+			helper.assertTrue(bird.getHealth() == 4.0F && player.getMainHandItem().getCount() == 1, "a carrot should heal a tamed budgie a little");
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COCOA_BEANS, 2));
+			bird.mobInteract(player, InteractionHand.MAIN_HAND);
+			helper.assertTrue(bird.refusals == 1 && player.getMainHandItem().getCount() == 2, "cocoa beans should be refused and kept");
+			chick.snapTo(at.getX() + 1.5, at.getY(), at.getZ() + 0.5, 0, 0);
+			chick.setNoAi(true);
+			chick.tame(player);
+			chick.setBaby(true);
+			level.addFreshEntity(chick);
+			int before = chick.getAge();
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Foods.MILLET_SPRAY.get(), 1));
+			chick.mobInteract(player, InteractionHand.MAIN_HAND);
+			System.out.println("[little_birds_gametest] eating: tamed by millet, treats " + bird.treats + ", snacks " + bird.snacks + ", refusals " + bird.refusals + ", chick age " + before + " to " + chick.getAge());
+			helper.assertTrue(chick.getAge() > before, "a treat should hurry a chick along");
+		} finally {
+			bird.discard();
+			chick.discard();
+			level.getServer().getPlayerList().remove(player);
+		}
+		helper.succeed();
 	}
 
 	/** Wild budgies may appear on grass in daylight, not on stone, and never while natural spawning is off or the chance is 0. */

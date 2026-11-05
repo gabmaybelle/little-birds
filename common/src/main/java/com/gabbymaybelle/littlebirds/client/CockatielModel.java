@@ -90,6 +90,10 @@ public class CockatielModel extends EntityModel<BirdRenderState> {
 		super.setupAnim(state);
 		this.head.xRot = state.xRot * Mth.DEG_TO_RAD;
 		this.head.yRot = state.yRot * Mth.DEG_TO_RAD;
+		if (state.shaking > 0.0F) {
+			// No, thank you: a quick shake of the head.
+			this.head.yRot += Mth.sin(state.shaking * 1.3F) * 0.5F;
+		}
 		float bob = state.flapAngle * 0.3F;
 		boolean alert = state.greeting > 0.0F || state.pose == BirdRenderState.Pose.FLYING;
 		this.crest.xRot = alert ? CREST_UP : CREST_CALM;

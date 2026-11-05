@@ -3,6 +3,7 @@ package com.gabbymaybelle.littlebirds.gametest;
 import com.gabbymaybelle.littlebirds.Birds;
 import com.gabbymaybelle.littlebirds.Budgie;
 import com.gabbymaybelle.littlebirds.Cockatiel;
+import com.gabbymaybelle.littlebirds.Foods;
 import com.gabbymaybelle.littlebirds.Lovebird;
 import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
@@ -77,6 +78,7 @@ public class BudgieTest implements FabricClientGameTest {
 			cockatiel(ctx, server, home);
 			lovebirds(ctx, server, home);
 			breeding(ctx, server, home);
+			eating(ctx, server, home);
 			spawnRules(server, home.offset(6, 0, 6));
 			biomes(server);
 		}
@@ -646,6 +648,90 @@ public class BudgieTest implements FabricClientGameTest {
 		check(waitFor(ctx, server, 1600, s -> loveChick.apply(s) != null), "a lovebird fed with its partner makes a chick");
 		server.runOnServer(s -> player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY));
 		server.runCommand("kill @e[type=little_birds:lovebird]");
+	}
+
+	/**
+	 * Eating: millet spray tames a wild bird at once and is a treat a full bird won't take again
+	 * straight away; a bird comes to the hand that holds it; a snack from the farm heals a tamed
+	 * bird and a second one right after waits; a chick fed a treat grows a little; cocoa beans
+	 * are refused and kept.
+	 */
+	private void eating(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		check(BuiltInRegistries.ITEM.containsKey(Foods.MILLET_SPRAY_ID), "the millet spray is registered");
+		// Survival for this part: a creative hand never runs out, and the counts below are the point.
+		server.runCommand("gamemode survival @a");
+		Budgie bird = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 1.5, home.getY(), home.getZ() + 1.5, 0, 0);
+			b.setNoAi(true);
+			level.addFreshEntity(b);
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Foods.MILLET_SPRAY.get(), 2));
+			return b;
+		});
+		ctx.waitTicks(5);
+		server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
+		ctx.waitTicks(2);
+		int left = server.computeOnServer(s -> player(s).getMainHandItem().getCount());
+		check(bird.isTame() && left == 1, "millet spray tames a wild budgie on the first try (sprays left: " + left + ")");
+		server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
+		ctx.waitTicks(2);
+		left = server.computeOnServer(s -> player(s).getMainHandItem().getCount());
+		check(left == 1 && bird.treats == 1, "a treat right after does nothing: the bird is full (sprays left: " + left + ")");
+		// A snack: the bird is a little hurt, a carrot heals it, a second carrot at once waits.
+		server.runOnServer(s -> {
+			bird.setHealth(3.0F);
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.CARROT, 2));
+			bird.mobInteract(player(s), InteractionHand.MAIN_HAND);
+		});
+		ctx.waitTicks(2);
+		float health = bird.getHealth();
+		left = server.computeOnServer(s -> player(s).getMainHandItem().getCount());
+		check(health == 4.0F && left == 1 && bird.snacks == 1, "a carrot is a snack: the budgie heals a little (health " + health + ", carrots left " + left + ")");
+		server.runOnServer(s -> bird.mobInteract(player(s), InteractionHand.MAIN_HAND));
+		ctx.waitTicks(2);
+		check(bird.getHealth() == 4.0F && bird.snacks == 1, "a second snack right after waits");
+		// Cocoa beans: no, thank you.
+		server.runOnServer(s -> {
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.COCOA_BEANS, 2));
+			bird.mobInteract(player(s), InteractionHand.MAIN_HAND);
+		});
+		ctx.waitTicks(2);
+		left = server.computeOnServer(s -> player(s).getMainHandItem().getCount());
+		check(bird.refusals == 1 && left == 2, "cocoa beans are refused with a head shake and kept (" + left + " left)");
+		// A chick fed a treat grows a little.
+		Budgie chick = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Budgie c = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			c.snapTo(home.getX() + 2.5, home.getY(), home.getZ() + 1.5, 0, 0);
+			c.setNoAi(true);
+			c.tame(player(s));
+			c.setBaby(true);
+			level.addFreshEntity(c);
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Foods.MILLET_SPRAY.get(), 2));
+			return c;
+		});
+		ctx.waitTicks(2);
+		int before = server.computeOnServer(s -> chick.getAge());
+		server.runOnServer(s -> chick.mobInteract(player(s), InteractionHand.MAIN_HAND));
+		ctx.waitTicks(2);
+		int after = server.computeOnServer(s -> chick.getAge());
+		check(before < 0 && after > before, "a treat hurries a chick along (age " + before + " to " + after + ")");
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		ctx.waitTicks(5);
+		// Tempting: a wild budgie with its wits about it comes to the hand holding millet.
+		Budgie tempted = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 6.5, home.getY(), home.getZ() + 0.5, 0, 0);
+			level.addFreshEntity(b);
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Foods.MILLET_SPRAY.get(), 1));
+			return b;
+		});
+		check(waitFor(ctx, server, 400, s -> tempted.distanceTo(player(s)) < 3.0), "a budgie comes to the hand holding millet spray");
+		server.runOnServer(s -> player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY));
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		server.runCommand("gamemode creative @a");
 	}
 
 	private static void usePerch(TestServerContext server, BlockPos perch) {

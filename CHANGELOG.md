@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- The millet spray, the one treat, crafted from wheat and seeds: it tames a wild bird on the
+  first try, a bird comes to the hand that holds it, and a tamed bird fed one gives a happy bob.
+  A treat is not a meal: a bird that has just had one takes nothing more for half a minute.
+- Snacks from the farm: a tamed bird nibbles a carrot, an apple, a melon slice, berries or a
+  beetroot, crumbs and all, and is the better for it; a chick fed a treat or a snack grows a
+  little. Pack makers can change the list (`#little_birds:snacks`).
+- No, thank you: cocoa beans and poisonous potatoes get a shake of the head and stay in your
+  hand (`#little_birds:refused`).
+
 ## 0.2.0: A bird or two
 
 Two more birds, for Minecraft 26.3 on Fabric and NeoForge. Worlds from 0.1.0 keep their budgies.

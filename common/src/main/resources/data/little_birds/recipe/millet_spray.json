@@ -1,0 +1,13 @@
+{
+	"type": "minecraft:crafting_shapeless",
+	"category": "misc",
+	"ingredients": [
+		"minecraft:wheat",
+		"minecraft:wheat_seeds",
+		"minecraft:wheat_seeds"
+	],
+	"result": {
+		"id": "little_birds:millet_spray",
+		"count": 2
+	}
+}

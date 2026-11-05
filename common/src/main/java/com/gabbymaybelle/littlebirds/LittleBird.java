@@ -1,6 +1,8 @@
 package com.gabbymaybelle.littlebirds;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ItemParticleOption;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -36,6 +38,7 @@ import net.minecraft.world.entity.ai.goal.FollowParentGoal;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
+import net.minecraft.world.entity.ai.goal.TemptGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomFlyingGoal;
 import net.minecraft.world.entity.ai.navigation.FlyingPathNavigation;
 import net.minecraft.world.entity.ai.navigation.PathNavigation;
@@ -95,6 +98,17 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 	public int greetings;
 	/** Client side: ticks left of the greeting animation. */
 	public int greetTicks;
+	/** The entity event that tells clients to play the head shake (a refused food). */
+	private static final byte SHAKE_EVENT = 70;
+	/** Client side: ticks left of the head shake. */
+	public int shakeTicks;
+	/** Ticks until it will take another treat, and another snack. */
+	private int fullOfTreat;
+	private int fullOfSnack;
+	/** How many treats, snacks and refusals since it was loaded (for the tests). */
+	public int treats;
+	public int snacks;
+	public int refusals;
 
 	// The flap animation, as vanilla's parrot keeps it: the renderer reads these.
 	public float flap;
@@ -162,11 +176,14 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		this.goalSelector.addGoal(0, new FloatGoal(this));
 		this.goalSelector.addGoal(1, new LookAtPlayerGoal(this, Player.class, 8.0F));
 		this.goalSelector.addGoal(1, new RoostGoal(this));
+		// Millet in a hand nearby wins over wandering and following; a bird on its perch for the night keeps its seat.
+		this.goalSelector.addGoal(1, new TemptGoal(this, 1.0, Foods::isTreat, false));
 		this.goalSelector.addGoal(2, new SitWhenOrderedToGoal(this));
 		this.goalSelector.addGoal(2, new StayHomeFollowOwnerGoal(this));
 		this.goalSelector.addGoal(2, new BreedGoal(this, 1.0));
 		this.goalSelector.addGoal(2, new WaterAvoidingRandomFlyingGoal(this, 1.0));
 		this.goalSelector.addGoal(3, new FindPerchGoal(this));
+
 		this.goalSelector.addGoal(4, new FollowParentGoal(this, 1.1));
 		// No LandOnOwnersShoulderGoal: a little bird rides a shoulder only when asked.
 	}
@@ -260,6 +277,15 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		this.calculateFlapping();
 		if (this.greetTicks > 0) {
 			this.greetTicks--;
+		}
+		if (this.shakeTicks > 0) {
+			this.shakeTicks--;
+		}
+		if (this.fullOfTreat > 0) {
+			this.fullOfTreat--;
+		}
+		if (this.fullOfSnack > 0) {
+			this.fullOfSnack--;
 		}
 		if (this.isOnShoulder()) {
 			this.followShoulder();
@@ -391,6 +417,8 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 	public void handleEntityEvent(@EntityEvent.Value byte id) {
 		if (id == GREET_EVENT) {
 			this.greetTicks = this.greetingTicks();
+		} else if (id == SHAKE_EVENT) {
+			this.shakeTicks = 20;
 		} else {
 			super.handleEntityEvent(id);
 		}
@@ -433,10 +461,28 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		this.flap = this.flap + this.flapping * 2.0F;
 	}
 
-	/** Seeds tame a wild bird (one try in three); a sneak-use puts a tamed one on or off the shoulder; a use sits it or stands it up. */
+	/**
+	 * What happens when a player uses a bird: a refused food gets a head shake; the millet spray
+	 * tames a wild bird at once, or treats a tamed one (if it isn't full); a snack feeds a tamed
+	 * one; seeds tame a wild bird (one try in three) or court a tamed one; a sneak-use puts a
+	 * tamed one on or off the shoulder; a plain use sits it or stands it up.
+	 */
 	@Override
 	public InteractionResult mobInteract(Player player, InteractionHand hand) {
 		ItemStack stack = player.getItemInHand(hand);
+		if (Foods.isRefused(stack)) {
+			if (!this.level().isClientSide()) {
+				this.refusals++;
+				this.level().broadcastEntityEvent(this, SHAKE_EVENT);
+			}
+			return InteractionResult.SUCCESS;
+		}
+		if (Foods.isTreat(stack)) {
+			return this.takeTreat(player, hand, stack);
+		}
+		if (Foods.isSnack(stack) && this.isTame() && this.isOwnedBy(player)) {
+			return this.takeSnack(player, hand, stack);
+		}
 		if (!this.isTame() && stack.is(ItemTags.PARROT_FOOD)) {
 			this.usePlayerItem(player, hand, stack);
 			if (!this.isSilent()) {
@@ -474,6 +520,61 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 			return InteractionResult.SUCCESS;
 		}
 		return super.mobInteract(player, hand);
+	}
+
+	/**
+	 * The millet spray: a wild bird is tamed on the first try; a tamed one gets a happy bob, a
+	 * little health, and a chick a little growth. A treat is not a meal: a bird that has just had
+	 * one takes nothing more for half a minute, and the spray stays in the hand.
+	 */
+	private InteractionResult takeTreat(Player player, InteractionHand hand, ItemStack stack) {
+		if (this.level().isClientSide()) {
+			return InteractionResult.SUCCESS;
+		}
+		if (!this.isTame()) {
+			this.usePlayerItem(player, hand, stack);
+			this.playEatingSound();
+			this.tame(player);
+			this.level().broadcastEntityEvent(this, (byte) 7);
+			this.fullOfTreat = Foods.TREAT_FULL;
+			this.treats++;
+			return InteractionResult.SUCCESS;
+		}
+		if (!this.isOwnedBy(player) || this.fullOfTreat > 0) {
+			return InteractionResult.SUCCESS;
+		}
+		this.usePlayerItem(player, hand, stack);
+		this.playEatingSound();
+		this.heal(1.0F);
+		if (this.isBaby()) {
+			this.ageUp(AgeableMob.getSpeedUpSecondsWhenFeeding(-this.getAge()), true);
+		}
+		this.fullOfTreat = Foods.TREAT_FULL;
+		this.treats++;
+		this.level().broadcastEntityEvent(this, GREET_EVENT);
+		return InteractionResult.SUCCESS;
+	}
+
+	/** A snack from the farm: the bird nibbles it, crumbs fly, it heals a little, and a chick grows a little; then it's had enough for a few seconds. */
+	private InteractionResult takeSnack(Player player, InteractionHand hand, ItemStack stack) {
+		if (this.level().isClientSide()) {
+			return InteractionResult.SUCCESS;
+		}
+		if (this.fullOfSnack > 0) {
+			return InteractionResult.SUCCESS;
+		}
+		if (this.level() instanceof ServerLevel level) {
+			level.sendParticles(new ItemParticleOption(ParticleTypes.ITEM, stack.getItem()), this.getX(), this.getY() + this.getBbHeight() * 0.6, this.getZ(), 6, 0.1, 0.1, 0.1, 0.05);
+		}
+		this.usePlayerItem(player, hand, stack);
+		this.playEatingSound();
+		this.heal(1.0F);
+		if (this.isBaby()) {
+			this.ageUp(AgeableMob.getSpeedUpSecondsWhenFeeding(-this.getAge()), true);
+		}
+		this.fullOfSnack = Foods.SNACK_FULL;
+		this.snacks++;
+		return InteractionResult.SUCCESS;
 	}
 
 	/** Seeds, the same food that tames: a tamed bird fed seeds is ready to breed. */

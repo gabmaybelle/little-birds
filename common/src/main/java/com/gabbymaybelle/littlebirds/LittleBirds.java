@@ -23,6 +23,7 @@ public final class LittleBirds {
 		Birds.register();
 		Perch.register();
 		Sounds.register();
+		Foods.register();
 		LOGGER.info("Little Birds: ready on {}", Services.PLATFORM.name());
 	}
 

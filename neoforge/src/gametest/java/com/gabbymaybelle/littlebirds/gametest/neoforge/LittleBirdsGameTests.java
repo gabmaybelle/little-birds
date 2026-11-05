@@ -46,6 +46,7 @@ public final class LittleBirdsGameTests {
 		FUNCTIONS.put("lovebirds_pair_and_share_a_perch", BudgieChecks::lovebirds);
 		FUNCTIONS.put("fed_budgies_make_a_chick", BudgieChecks::breeding);
 		FUNCTIONS.put("a_lovebird_pair_makes_a_chick", BudgieChecks::lovebirdChick);
+		FUNCTIONS.put("treats_snacks_and_a_no_thank_you", BudgieChecks::eating);
 	}
 
 	public LittleBirdsGameTests(IEventBus modBus) {
@@ -79,6 +80,7 @@ public final class LittleBirdsGameTests {
 		test(event, "lovebirds_pair_and_share_a_perch", plain, ROOM, 2400);
 		test(event, "fed_budgies_make_a_chick", plain, ROOM, 1200);
 		test(event, "a_lovebird_pair_makes_a_chick", plain, ROOM, 2400);
+		test(event, "treats_snacks_and_a_no_thank_you", plain, EMPTY, 40);
 	}
 
 	private static void test(RegisterGameTestsEvent event, String name, Holder<TestEnvironmentDefinition<?>> environment, Identifier structure, int maxTicks) {
