@@ -110,5 +110,39 @@
 			"little_birds:canary/song2",
 			"little_birds:canary/song3"
 		]
+	},
+	"zebra_finch_chatter": {
+		"subtitle": "subtitles.little_birds.zebra_finch_chatter",
+		"sounds": [
+			"little_birds:zebra_finch/chatter1",
+			"little_birds:zebra_finch/chatter2",
+			"little_birds:zebra_finch/chatter3",
+			"little_birds:zebra_finch/chatter4",
+			"little_birds:zebra_finch/chatter5"
+		]
+	},
+	"zebra_finch_greeting": {
+		"subtitle": "subtitles.little_birds.zebra_finch_greeting",
+		"sounds": [
+			"little_birds:zebra_finch/greeting1",
+			"little_birds:zebra_finch/greeting2",
+			"little_birds:zebra_finch/greeting3"
+		]
+	},
+	"zebra_finch_settle": {
+		"subtitle": "subtitles.little_birds.zebra_finch_settle",
+		"sounds": [
+			"little_birds:zebra_finch/settle1",
+			"little_birds:zebra_finch/settle2",
+			"little_birds:zebra_finch/settle3"
+		]
+	},
+	"zebra_finch_song": {
+		"subtitle": "subtitles.little_birds.zebra_finch_song",
+		"sounds": [
+			"little_birds:zebra_finch/song1",
+			"little_birds:zebra_finch/song2",
+			"little_birds:zebra_finch/song3"
+		]
 	}
 }

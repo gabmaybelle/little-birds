@@ -117,6 +117,12 @@ public class Lovebird extends LittleBird {
 		return this.partnerId != null && this.partnerId.equals(other.getUUID());
 	}
 
+	/** Its partner may share its perch. */
+	@Override
+	public int maxPerchMates() {
+		return 1;
+	}
+
 	@Override
 	protected void addAdditionalSaveData(ValueOutput output) {
 		super.addAdditionalSaveData(output);

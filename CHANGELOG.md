@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- The zebra finch: the smallest little bird, with a red beak, in three colours (the grey with its
+  orange cheeks and barred tail, the fawn, the white). Finches like company: one keeps near the
+  nearest other finch, two may share one perch and sit on it side by side, and by day a tamed
+  finch sings a short phrase now and then; a finch that hears another sing answers it a moment
+  later. A millet spray gets a phrase too. It keeps to its perch rather than a shoulder. Its beeps,
+  chirps and phrases are cut from recordings of real zebra finches. Wild zebra finches live in
+  plains and sunflower plains, always three together (`#little_birds:zebra_finch_spawns`).
 - The canary: a song bird a touch smaller than a budgie, in three colours (yellow, the red
   factor, white), with a short straight beak and a notched tail. Every morning a tamed canary
   sings its song, several seconds of it, from wherever it sits; a millet spray gets a song too.

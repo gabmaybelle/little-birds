@@ -10,6 +10,8 @@ import com.gabbymaybelle.littlebirds.client.CockatielRenderer;
 import com.gabbymaybelle.littlebirds.client.LovebirdModel;
 import com.gabbymaybelle.littlebirds.client.LovebirdRenderer;
 import com.gabbymaybelle.littlebirds.client.BudgieRenderer;
+import com.gabbymaybelle.littlebirds.client.ZebraFinchModel;
+import com.gabbymaybelle.littlebirds.client.ZebraFinchRenderer;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -24,12 +26,14 @@ public class LittleBirdsNeoForgeClient {
 			event.registerLayerDefinition(CockatielModel.LAYER, CockatielModel::createBodyLayer);
 			event.registerLayerDefinition(LovebirdModel.LAYER, LovebirdModel::createBodyLayer);
 			event.registerLayerDefinition(CanaryModel.LAYER, CanaryModel::createBodyLayer);
+			event.registerLayerDefinition(ZebraFinchModel.LAYER, ZebraFinchModel::createBodyLayer);
 		});
 		modBus.addListener(EntityRenderersEvent.RegisterRenderers.class, event -> {
 			event.registerEntityRenderer(Birds.BUDGIE.get(), BudgieRenderer::new);
 			event.registerEntityRenderer(Birds.COCKATIEL.get(), CockatielRenderer::new);
 			event.registerEntityRenderer(Birds.LOVEBIRD.get(), LovebirdRenderer::new);
 			event.registerEntityRenderer(Birds.CANARY.get(), CanaryRenderer::new);
+			event.registerEntityRenderer(Birds.ZEBRA_FINCH.get(), ZebraFinchRenderer::new);
 		});
 	}
 }

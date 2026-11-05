@@ -23,10 +23,12 @@ public final class Birds {
 	public static final Identifier COCKATIEL_ID = LittleBirds.id("cockatiel");
 	public static final Identifier LOVEBIRD_ID = LittleBirds.id("lovebird");
 	public static final Identifier CANARY_ID = LittleBirds.id("canary");
+	public static final Identifier ZEBRA_FINCH_ID = LittleBirds.id("zebra_finch");
 	private static final ResourceKey<Item> BUDGIE_EGG_KEY = ResourceKey.create(Registries.ITEM, LittleBirds.id("budgie_spawn_egg"));
 	private static final ResourceKey<Item> COCKATIEL_EGG_KEY = ResourceKey.create(Registries.ITEM, LittleBirds.id("cockatiel_spawn_egg"));
 	private static final ResourceKey<Item> LOVEBIRD_EGG_KEY = ResourceKey.create(Registries.ITEM, LittleBirds.id("lovebird_spawn_egg"));
 	private static final ResourceKey<Item> CANARY_EGG_KEY = ResourceKey.create(Registries.ITEM, LittleBirds.id("canary_spawn_egg"));
+	private static final ResourceKey<Item> ZEBRA_FINCH_EGG_KEY = ResourceKey.create(Registries.ITEM, LittleBirds.id("zebra_finch_spawn_egg"));
 
 	/**
 	 * Where wild budgies live: savanna (the real bird's home, open grassland) and jungle edges.
@@ -53,6 +55,11 @@ public final class Birds {
 	public static final List<MobSpec.Spawn> CANARY_SPAWNS = List.of(
 			new MobSpec.Spawn(CANARY_BIOMES, 10, 2, 3));
 
+	/** Where wild zebra finches live: open grassland ({@code #little_birds:zebra_finch_spawns}: plains, sunflower plains), always in threes. */
+	public static final TagKey<Biome> ZEBRA_FINCH_BIOMES = TagKey.create(Registries.BIOME, LittleBirds.id("zebra_finch_spawns"));
+	public static final List<MobSpec.Spawn> ZEBRA_FINCH_SPAWNS = List.of(
+			new MobSpec.Spawn(ZEBRA_FINCH_BIOMES, 6, 3, 3));
+
 	/** A budgie is a little smaller than a parrot (0.5 x 0.9): it needs to fit on a perch. */
 	public static final Supplier<EntityType<Budgie>> BUDGIE = Services.PLATFORM.registerMob(new MobSpec<>(
 			BUDGIE_ID, Budgie::new, MobCategory.CREATURE, 0.4F, 0.7F, 0.5F, Budgie::createAttributes,
@@ -73,6 +80,11 @@ public final class Birds {
 			CANARY_ID, Canary::new, MobCategory.CREATURE, 0.35F, 0.5F, 0.4F, Canary::createAttributes,
 			SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING, LittleBird::checkSpawnRules, CANARY_SPAWNS));
 
+	/** A zebra finch is the smallest of the birds. */
+	public static final Supplier<EntityType<ZebraFinch>> ZEBRA_FINCH = Services.PLATFORM.registerMob(new MobSpec<>(
+			ZEBRA_FINCH_ID, ZebraFinch::new, MobCategory.CREATURE, 0.3F, 0.45F, 0.35F, ZebraFinch::createAttributes,
+			SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING, LittleBird::checkSpawnRules, ZEBRA_FINCH_SPAWNS));
+
 	public static final Supplier<Item> BUDGIE_SPAWN_EGG = Services.PLATFORM.register(Registries.ITEM, BUDGIE_EGG_KEY.identifier(),
 			() -> new SpawnEggItem(new Item.Properties().setId(BUDGIE_EGG_KEY).spawnEgg(BUDGIE.get())));
 
@@ -85,6 +97,9 @@ public final class Birds {
 	public static final Supplier<Item> CANARY_SPAWN_EGG = Services.PLATFORM.register(Registries.ITEM, CANARY_EGG_KEY.identifier(),
 			() -> new SpawnEggItem(new Item.Properties().setId(CANARY_EGG_KEY).spawnEgg(CANARY.get())));
 
+	public static final Supplier<Item> ZEBRA_FINCH_SPAWN_EGG = Services.PLATFORM.register(Registries.ITEM, ZEBRA_FINCH_EGG_KEY.identifier(),
+			() -> new SpawnEggItem(new Item.Properties().setId(ZEBRA_FINCH_EGG_KEY).spawnEgg(ZEBRA_FINCH.get())));
+
 	private Birds() {
 	}
 
@@ -95,5 +110,6 @@ public final class Birds {
 		Services.PLATFORM.addToCreativeTab(eggs, COCKATIEL_SPAWN_EGG);
 		Services.PLATFORM.addToCreativeTab(eggs, LOVEBIRD_SPAWN_EGG);
 		Services.PLATFORM.addToCreativeTab(eggs, CANARY_SPAWN_EGG);
+		Services.PLATFORM.addToCreativeTab(eggs, ZEBRA_FINCH_SPAWN_EGG);
 	}
 }

@@ -41,6 +41,15 @@ public final class Sounds {
 	/** The song: several seconds of it, every morning and for a treat. */
 	public static final Supplier<SoundEvent> CANARY_SONG = sound("canary_song");
 
+	/** A zebra finch's little nasal beeps. */
+	public static final Supplier<SoundEvent> ZEBRA_FINCH_CHATTER = sound("zebra_finch_chatter");
+	/** The chirp when its owner comes home. */
+	public static final Supplier<SoundEvent> ZEBRA_FINCH_GREETING = sound("zebra_finch_greeting");
+	/** The soft call as it settles on its perch for the night. */
+	public static final Supplier<SoundEvent> ZEBRA_FINCH_SETTLE = sound("zebra_finch_settle");
+	/** A phrase of its song: a second or two, now and then by day, and in answer to another finch. */
+	public static final Supplier<SoundEvent> ZEBRA_FINCH_SONG = sound("zebra_finch_song");
+
 	private Sounds() {
 	}
 

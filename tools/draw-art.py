@@ -269,6 +269,56 @@ def canary(name, p):
 	img.save(TEX / "entity/canary" / f"canary_{name}.png")
 
 
+# Zebra finch: B body, Y breast, C cheek patch, S the tear stripe, N flanks, D flank dots, T tail bar
+# dark, U tail bar light, E eye, L feet, K beak (red on every colour).
+ZEBRA_FINCH = {
+	"grey": dict(B="#9a9a9e", Y="#dcdcd8", C="#e07a2a", S="#2a2a2a", N="#a85a2e", D="#f2f2ee", T="#1e1e1e", U="#f0f0ee", E="#141414", L="#e39a4a", K="#d8452a", marked=True),
+	"fawn": dict(B="#c9ab8c", Y="#ede2d2", C="#d9884a", S="#7a5a40", N="#b98054", D="#f6f0e6", T="#7a5a40", U="#f0e6d6", E="#141414", L="#e39a4a", K="#d8452a", marked=True),
+	"white": dict(B="#f6f6f2", Y="#ffffff", C="#f6f6f2", S="#f6f6f2", N="#f6f6f2", D="#f6f6f2", T="#ecece6", U="#f6f6f2", E="#141414", L="#e39a4a", K="#d8452a", marked=False),
+}
+
+
+def zebra_finch(name, p):
+	"""The zebra finch's texture in ZebraFinchModel's layout (32x32): head 2x2x2 at 0,0; cap 2x1x2 at 10,0;
+	beak 1x1x1 at 20,0; body 3x3x3 at 0,6; wing 1x2x3 at 12,6; tail 2x2x1 at 22,6; leg 1x2x1 at 12,13."""
+	img = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+
+	head = Box(img, 0, 0, 2, 2, 2)
+	head.fill(p["B"])
+	head.paint("front", lambda x, y, w, h: p["Y"])
+	# The eye high at the front of each side, the tear stripe under it, the orange cheek behind.
+	for side, front in (("left", 0), ("right", 1)):
+		head.paint(side, lambda x, y, w, h, front=front: p["E"] if (x, y) == (front, 0) else (p["S"] if (x, y) == (front, 1) else p["C"]))
+
+	cap = Box(img, 10, 0, 2, 1, 2)
+	cap.fill(p["B"])
+
+	Box(img, 20, 0, 1, 1, 1).fill(p["K"])
+
+	body = Box(img, 0, 6, 3, 3, 3)
+	body.fill(p["B"])
+	body.paint("front", lambda x, y, w, h: p["Y"] if y > 0 else p["B"])
+	# Chestnut flanks with white dots.
+	for side in ("left", "right"):
+		body.paint(side, lambda x, y, w, h: p["D"] if (x + y) % 2 == 1 and y > 0 else (p["N"] if y > 0 else p["B"]))
+
+	wing = Box(img, 12, 6, 1, 2, 3)
+	wing.fill(shade(p["B"], 0.9))
+	for side in ("left", "right"):
+		wing.paint(side, lambda x, y, w, h: shade(p["B"], 0.8) if y == h - 1 else shade(p["B"], 0.92))
+
+	tail = Box(img, 22, 6, 2, 2, 1)
+	tail.fill(p["T"])
+	# The barred tail: dark and light bands across it.
+	for face in ("front", "back", "left", "right", "top", "bottom"):
+		tail.paint(face, lambda x, y, w, h: p["U"] if y % 2 == 1 else p["T"])
+
+	Box(img, 12, 13, 1, 2, 1).fill(p["L"])
+
+	(TEX / "entity/zebra_finch").mkdir(parents=True, exist_ok=True)
+	img.save(TEX / "entity/zebra_finch" / f"zebra_finch_{name}.png")
+
+
 EGG = """
 ................
 ......oooo......
@@ -380,6 +430,9 @@ if __name__ == "__main__":
 	for name, palette in CANARY.items():
 		canary(name, palette)
 	egg("canary", {"o": "#2e2119", "B": "#f2dc48", "b": "#c9b232", "Y": "#ec6a2c"})
+	for name, palette in ZEBRA_FINCH.items():
+		zebra_finch(name, palette)
+	egg("zebra_finch", {"o": "#2e2119", "B": "#9a9a9e", "b": "#6e6e72", "Y": "#e07a2a"})
 	perch()
 	millet()
 	print("art written")

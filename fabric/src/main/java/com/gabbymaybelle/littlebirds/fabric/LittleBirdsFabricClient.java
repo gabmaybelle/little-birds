@@ -9,6 +9,8 @@ import com.gabbymaybelle.littlebirds.client.CockatielRenderer;
 import com.gabbymaybelle.littlebirds.client.LovebirdModel;
 import com.gabbymaybelle.littlebirds.client.LovebirdRenderer;
 import com.gabbymaybelle.littlebirds.client.BudgieRenderer;
+import com.gabbymaybelle.littlebirds.client.ZebraFinchModel;
+import com.gabbymaybelle.littlebirds.client.ZebraFinchRenderer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.ModelLayerRegistry;
@@ -25,5 +27,7 @@ public class LittleBirdsFabricClient implements ClientModInitializer {
 		EntityRendererRegistry.register(Birds.LOVEBIRD.get(), LovebirdRenderer::new);
 		ModelLayerRegistry.registerModelLayer(CanaryModel.LAYER, CanaryModel::createBodyLayer);
 		EntityRendererRegistry.register(Birds.CANARY.get(), CanaryRenderer::new);
+		ModelLayerRegistry.registerModelLayer(ZebraFinchModel.LAYER, ZebraFinchModel::createBodyLayer);
+		EntityRendererRegistry.register(Birds.ZEBRA_FINCH.get(), ZebraFinchRenderer::new);
 	}
 }

@@ -10,6 +10,7 @@ import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
 import com.gabbymaybelle.littlebirds.Sounds;
+import com.gabbymaybelle.littlebirds.ZebraFinch;
 import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -70,6 +71,9 @@ public class BudgieTest implements FabricClientGameTest {
 			server.runCommand("gamerule sendCommandFeedback false");
 			server.runCommand("gamerule announceAdvancements false");
 			server.runCommand("gamerule showDeathMessages false");
+			// No wild birds or parrots wandering into the screenshots (the spawn checks ask the rules directly, not the world).
+			server.runCommand("gamerule doMobSpawning false");
+			server.runCommand("kill @e[type=minecraft:parrot]");
 			server.runCommand("advancement grant @a only minecraft:husbandry/tame_an_animal");
 			BlockPos home = server.computeOnServer(s -> player(s).blockPosition());
 			spawn(ctx, server, home);
@@ -80,6 +84,7 @@ public class BudgieTest implements FabricClientGameTest {
 			cockatiel(ctx, server, home);
 			lovebirds(ctx, server, home);
 			canary(ctx, server, home);
+			zebraFinches(ctx, server, home);
 			breeding(ctx, server, home);
 			eating(ctx, server, home);
 			spawnRules(server, home.offset(6, 0, 6));
@@ -111,7 +116,8 @@ public class BudgieTest implements FabricClientGameTest {
 		for (var sound : List.of(Sounds.BUDGIE_CHATTER, Sounds.BUDGIE_GREETING, Sounds.BUDGIE_SETTLE,
 				Sounds.COCKATIEL_CHATTER, Sounds.COCKATIEL_GREETING, Sounds.COCKATIEL_SETTLE,
 				Sounds.LOVEBIRD_CHATTER, Sounds.LOVEBIRD_GREETING, Sounds.LOVEBIRD_SETTLE,
-				Sounds.CANARY_CHATTER, Sounds.CANARY_GREETING, Sounds.CANARY_SETTLE, Sounds.CANARY_SONG)) {
+				Sounds.CANARY_CHATTER, Sounds.CANARY_GREETING, Sounds.CANARY_SETTLE, Sounds.CANARY_SONG,
+				Sounds.ZEBRA_FINCH_CHATTER, Sounds.ZEBRA_FINCH_GREETING, Sounds.ZEBRA_FINCH_SETTLE, Sounds.ZEBRA_FINCH_SONG)) {
 			var id = sound.get().location();
 			String found = ctx.computeOnClient(mc -> {
 				var event = mc.getSoundManager().getSoundEvent(id);
@@ -661,6 +667,154 @@ public class BudgieTest implements FabricClientGameTest {
 		ctx.takeScreenshot("canary_colours_side");
 		server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
 		server.runCommand("kill @e[type=little_birds:canary]");
+		ctx.waitTicks(5);
+	}
+
+	/**
+	 * The zebra finch: registered with its egg, 3 health, keeps its colour, tamed with seeds, a
+	 * sneak-use leaves it where it is; a finch flies to keep near another; a phrase from one finch
+	 * is answered by the other (and the answer by nothing); by day a tamed finch sings on its own;
+	 * two finches share a perch and sit side by side, a third gets no seat there; plains list it,
+	 * savannas don't. A still one is posed beside a budgie, then the three colours side on.
+	 */
+	private void zebraFinches(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		check(BuiltInRegistries.ENTITY_TYPE.containsKey(Birds.ZEBRA_FINCH_ID), "the zebra finch is registered");
+		check(Birds.ZEBRA_FINCH_SPAWN_EGG.get() instanceof SpawnEggItem, "the zebra finch spawn egg is registered");
+		server.runCommand("time set day");
+		ZebraFinch a = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			ZebraFinch b = Birds.ZEBRA_FINCH.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(home.getX() + 1.5, home.getY(), home.getZ() + 1.5, 0, 0);
+			b.setColour(ZebraFinch.Colour.FAWN);
+			b.setNoAi(true);
+			level.addFreshEntity(b);
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+			return b;
+		});
+		ctx.waitTicks(20);
+		check(a.isAlive(), "a zebra finch put in the world is alive");
+		double health = server.computeOnServer(s -> a.getAttributeValue(Attributes.MAX_HEALTH));
+		check(health == 3.0, "the zebra finch has 3 health (got " + health + ")");
+		check(a.getColour() == ZebraFinch.Colour.FAWN, "the zebra finch kept its colour (got " + a.getColour() + ")");
+		int tries = 0;
+		while (tries < 60 && !a.isTame()) {
+			tries++;
+			server.runOnServer(s -> a.mobInteract(player(s), InteractionHand.MAIN_HAND));
+			ctx.waitTicks(1);
+		}
+		check(a.isTame(), "seeds tame a zebra finch (after " + tries + " tries)");
+		server.runOnServer(s -> {
+			player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+			player(s).setShiftKeyDown(true);
+			a.mobInteract(player(s), InteractionHand.MAIN_HAND);
+			player(s).setShiftKeyDown(false);
+		});
+		ctx.waitTicks(5);
+		check(!a.isOnShoulder() && !a.isOrderedToSit(), "a sneak-use leaves a zebra finch where it is: no shoulder");
+		// Company: a second tamed finch six blocks away flies over to the first, which is sitting.
+		server.runOnServer(s -> {
+			a.setNoAi(false);
+			a.setOrderedToSit(true);
+		});
+		ZebraFinch b = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			ZebraFinch f = Birds.ZEBRA_FINCH.get().create(level, EntitySpawnReason.COMMAND);
+			f.snapTo(home.getX() + 7.5, home.getY(), home.getZ() + 1.5, 0, 0);
+			f.setColour(ZebraFinch.Colour.GREY);
+			f.tame(player(s));
+			level.addFreshEntity(f);
+			return f;
+		});
+		check(waitFor(ctx, server, 600, s -> a.distanceTo(b) < 3.0), "a finch keeps company: it flies to the other finch");
+		server.runOnServer(s -> b.setOrderedToSit(true));
+		ctx.waitTicks(10);
+		// A phrase from one is answered by the other, and the answer by nothing.
+		int aSongs = a.songs, bSongs = b.songs;
+		server.runOnServer(s -> a.sing());
+		check(waitFor(ctx, server, 80, s -> b.songs == bSongs + 1), "a finch that hears another sing answers it (songs: " + b.songs + ")");
+		ctx.waitTicks(60);
+		check(a.songs == aSongs + 1 && b.songs == bSongs + 1, "an answer gets no answer (songs: " + a.songs + ", " + b.songs + ")");
+		// On its own, by day, a tamed finch sings a phrase within a minute or so.
+		int before = a.songs + b.songs;
+		check(waitFor(ctx, server, 1400, s -> a.songs + b.songs > before + 1), "by day a tamed finch sings now and then, and is answered (songs: " + a.songs + ", " + b.songs + ")");
+		// Two finches share a perch and sit side by side; a third gets no seat there.
+		BlockPos perch = home.offset(3, 0, 3);
+		server.runOnServer(s -> {
+			ServerLevel level = s.overworld();
+			level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+			level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.NORTH));
+			level.setBlockAndUpdate(perch.above(), Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch.above(2), Blocks.AIR.defaultBlockState());
+			a.setOrderedToSit(false);
+			b.setOrderedToSit(false);
+		});
+		check(waitFor(ctx, server, 600, s -> perch.equals(a.getPerch()) && perch.equals(b.getPerch())), "two finches call the same perch home");
+		ZebraFinch c = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			ZebraFinch f = Birds.ZEBRA_FINCH.get().create(level, EntitySpawnReason.COMMAND);
+			f.snapTo(home.getX() + 2.5, home.getY(), home.getZ() + 2.5, 0, 0);
+			f.setColour(ZebraFinch.Colour.WHITE);
+			f.tame(player(s));
+			level.addFreshEntity(f);
+			return f;
+		});
+		server.runCommand("time set night");
+		check(waitFor(ctx, server, 1200, s -> a.isPerched() && b.isPerched()), "at night both sit on the perch");
+		double apart = server.computeOnServer(s -> a.position().distanceTo(b.position()));
+		check(apart > 0.3 && apart < 0.5, "they sit side by side, either side of the middle (apart " + String.format("%.2f", apart) + ")");
+		check(!c.hasPerch(), "a third finch finds no seat on a perch two already share");
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), perch.getX() + 0.5, perch.getY(), perch.getZ() + 2.5, java.util.Set.of(), 180.0F, 10.0F, false));
+		ctx.waitTicks(10);
+		ctx.takeScreenshot("zebra_finches");
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
+		server.runCommand("time set day");
+		check(weightOf(server, Biomes.PLAINS, Birds.ZEBRA_FINCH.get()) == 6, "plains spawn zebra finches at weight 6");
+		check(weightOf(server, Biomes.SAVANNA, Birds.ZEBRA_FINCH.get()) == 0, "savannas don't spawn zebra finches");
+		server.runCommand("kill @e[type=little_birds:zebra_finch]");
+		server.runOnServer(s -> {
+			s.overworld().setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+			s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		});
+		ctx.waitTicks(220);
+		// Side on, for size: a still grey finch beside a still green budgie.
+		server.runOnServer(s -> {
+			ServerLevel level = s.overworld();
+			ZebraFinch f = Birds.ZEBRA_FINCH.get().create(level, EntitySpawnReason.COMMAND);
+			f.snapTo(home.getX() + 3.5, home.getY(), home.getZ() + 0.5, 0, 0);
+			f.setColour(ZebraFinch.Colour.GREY);
+			f.setNoAi(true);
+			f.setOnGround(true);
+			level.addFreshEntity(f);
+			Budgie bud = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			bud.snapTo(home.getX() + 3.5, home.getY(), home.getZ() - 1.0, 0, 0);
+			bud.setColour(Budgie.Colour.GREEN);
+			bud.setNoAi(true);
+			bud.setOnGround(true);
+			level.addFreshEntity(bud);
+			player(s).teleportTo(level, home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), -90.0F, 20.0F, false);
+		});
+		ctx.waitTicks(10);
+		ctx.takeScreenshot("zebra_finch");
+		server.runCommand("kill @e[type=little_birds:zebra_finch]");
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		ctx.waitTicks(220);
+		server.runOnServer(s -> {
+			ServerLevel level = s.overworld();
+			ZebraFinch.Colour[] colours = ZebraFinch.Colour.COLOURS;
+			for (int i = 0; i < colours.length; i++) {
+				ZebraFinch shown = Birds.ZEBRA_FINCH.get().create(level, EntitySpawnReason.COMMAND);
+				shown.snapTo(home.getX() + 3.5, home.getY(), home.getZ() - 1.0 + i * 1.2, 0, 0);
+				shown.setColour(colours[i]);
+				shown.setNoAi(true);
+				shown.setOnGround(true);
+				level.addFreshEntity(shown);
+			}
+			player(s).teleportTo(level, home.getX() + 0.5, home.getY(), home.getZ() + 0.2, java.util.Set.of(), -90.0F, 15.0F, false);
+		});
+		ctx.waitTicks(10);
+		ctx.takeScreenshot("zebra_finch_colours_side");
+		server.runOnServer(s -> player(s).teleportTo(s.overworld(), home.getX() + 0.5, home.getY(), home.getZ() + 0.5, java.util.Set.of(), 0.0F, 0.0F, false));
+		server.runCommand("kill @e[type=little_birds:zebra_finch]");
 		ctx.waitTicks(5);
 	}
 

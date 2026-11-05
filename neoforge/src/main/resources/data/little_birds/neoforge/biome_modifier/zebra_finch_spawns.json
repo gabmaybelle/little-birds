@@ -1,0 +1,13 @@
+{
+	"type": "neoforge:add_spawns",
+	"biomes": "#little_birds:zebra_finch_spawns",
+	"spawners": {
+		"type": "little_birds:zebra_finch",
+		"weight": 6,
+		"count": {
+			"type": "minecraft:uniform",
+			"min_inclusive": 3,
+			"max_inclusive": 3
+		}
+	}
+}

@@ -1,5 +1,6 @@
 package com.gabbymaybelle.littlebirds;
 
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.phys.AABB;
@@ -59,9 +60,16 @@ public class FindPerchGoal extends Goal {
 		return nearest;
 	}
 
-	/** A perch another bird already calls home is taken, unless the two share (a lovebird and its partner). */
+	/**
+	 * A perch another bird already calls home is taken, unless the two share (a lovebird and its
+	 * partner, two finches) and there is room: a bar seats this bird and its perch mates, no more.
+	 */
 	private boolean claimedByAnother(BlockPos perch) {
 		AABB around = new AABB(perch).inflate(FindPerchGoal.REACH * 2);
-		return !this.bird.level().getEntitiesOfClass(LittleBird.class, around, other -> other != this.bird && perch.equals(other.getPerch()) && !this.bird.sharesPerchWith(other)).isEmpty();
+		List<LittleBird> others = this.bird.level().getEntitiesOfClass(LittleBird.class, around, other -> other != this.bird && perch.equals(other.getPerch()));
+		if (others.size() > this.bird.maxPerchMates()) {
+			return true;
+		}
+		return others.stream().anyMatch(other -> !this.bird.sharesPerchWith(other));
 	}
 }

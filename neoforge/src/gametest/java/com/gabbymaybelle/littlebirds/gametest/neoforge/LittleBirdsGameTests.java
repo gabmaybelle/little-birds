@@ -48,6 +48,7 @@ public final class LittleBirdsGameTests {
 		FUNCTIONS.put("a_lovebird_pair_makes_a_chick", BudgieChecks::lovebirdChick);
 		FUNCTIONS.put("treats_snacks_and_a_no_thank_you", BudgieChecks::eating);
 		FUNCTIONS.put("a_canary_sings_in_the_morning", BudgieChecks::canary);
+		FUNCTIONS.put("zebra_finches_keep_company_and_answer", BudgieChecks::zebraFinches);
 	}
 
 	public LittleBirdsGameTests(IEventBus modBus) {
@@ -86,6 +87,7 @@ public final class LittleBirdsGameTests {
 		// a batch of its own and can set the clock to morning without waking the night tests above.
 		Holder<TestEnvironmentDefinition<?>> morning = event.registerEnvironment(id("morning"), new TestEnvironmentDefinition.SetGameRules(GameRuleMap.of()));
 		test(event, "a_canary_sings_in_the_morning", morning, ROOM, 600);
+		test(event, "zebra_finches_keep_company_and_answer", morning, ROOM, 2400);
 	}
 
 	private static void test(RegisterGameTestsEvent event, String name, Holder<TestEnvironmentDefinition<?>> environment, Identifier structure, int maxTicks) {

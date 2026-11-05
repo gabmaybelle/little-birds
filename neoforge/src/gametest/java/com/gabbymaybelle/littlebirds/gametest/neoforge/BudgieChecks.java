@@ -11,6 +11,7 @@ import com.gabbymaybelle.littlebirds.Perch;
 import com.gabbymaybelle.littlebirds.PerchBlock;
 import com.gabbymaybelle.littlebirds.Settings;
 import com.gabbymaybelle.littlebirds.Sounds;
+import com.gabbymaybelle.littlebirds.ZebraFinch;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -773,6 +774,136 @@ final class BudgieChecks {
 				tidy.run();
 			}
 			helper.succeed();
+		});
+	}
+
+	/**
+	 * Zebra finches: registered with the egg, 3 health, keeps its colour, seeds tame it, a sneak-use
+	 * leaves it on the ground; a second finch flies over to keep company; a phrase from one is
+	 * answered by the other and the answer by nothing; called to one perch, both sit on it side by
+	 * side; plains list it at weight 6 and savannas not at all. Runs by day, in the morning batch.
+	 */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: taming needs a player
+	static void zebraFinches(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos at = helper.absolutePos(new BlockPos(1, 1, 3));
+		BlockPos perch = helper.absolutePos(new BlockPos(5, 1, 3));
+		helper.assertTrue(BuiltInRegistries.ENTITY_TYPE.containsKey(Birds.ZEBRA_FINCH_ID), "the zebra finch should be registered");
+		helper.assertTrue(Birds.ZEBRA_FINCH_SPAWN_EGG.get() instanceof SpawnEggItem, "the zebra finch spawn egg should be registered");
+		level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+		level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.WEST));
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		ZebraFinch a = Birds.ZEBRA_FINCH.get().create(level, EntitySpawnReason.COMMAND);
+		ZebraFinch b = Birds.ZEBRA_FINCH.get().create(level, EntitySpawnReason.COMMAND);
+		Runnable tidy = () -> {
+			a.discard();
+			b.discard();
+			level.getServer().getPlayerList().remove(player);
+			level.setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		};
+		int plains;
+		int savanna;
+		try {
+			if (level.isDarkOutside()) {
+				helper.setTime((Math.floorDiv(level.getOverworldClockTime(), 24000L) + 1) * 24000L + 1000L);
+			}
+			player.setGameMode(GameType.CREATIVE);
+			player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+			player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.WHEAT_SEEDS, 64));
+			a.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0, 0);
+			a.setColour(ZebraFinch.Colour.FAWN);
+			a.setNoAi(true);
+			level.addFreshEntity(a);
+			double health = a.getAttributeValue(Attributes.MAX_HEALTH);
+			helper.assertTrue(health == 3.0, "the zebra finch should have 3 health (got " + health + ")");
+			helper.assertTrue(a.getColour() == ZebraFinch.Colour.FAWN, "the zebra finch should keep its colour (got " + a.getColour() + ")");
+			int tries = 0;
+			while (tries < 60 && !a.isTame()) {
+				tries++;
+				a.mobInteract(player, InteractionHand.MAIN_HAND);
+			}
+			helper.assertTrue(a.isTame(), "seeds should tame a zebra finch (" + tries + " tries)");
+			player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+			player.setShiftKeyDown(true);
+			a.mobInteract(player, InteractionHand.MAIN_HAND);
+			player.setShiftKeyDown(false);
+			helper.assertTrue(!a.isOnShoulder() && !a.isOrderedToSit(), "a sneak-use should leave a zebra finch where it is");
+			a.setNoAi(false);
+			a.setOrderedToSit(true);
+			b.snapTo(at.getX() + 5.5, at.getY(), at.getZ() + 0.5, 0, 0);
+			b.tame(player);
+			level.addFreshEntity(b);
+			plains = weightOf(level, Biomes.PLAINS, Birds.ZEBRA_FINCH.get());
+			savanna = weightOf(level, Biomes.SAVANNA, Birds.ZEBRA_FINCH.get());
+		} catch (RuntimeException e) {
+			tidy.run();
+			throw e;
+		}
+		int[] phase = {0};
+		int[] ticks = {0};
+		int[] since = {0};
+		helper.onEachTick(() -> {
+			ticks[0]++;
+			if (ticks[0] % 200 == 0) {
+				System.out.println("[little_birds_gametest] zebra finches: tick " + ticks[0] + ", phase " + phase[0] + ", apart " + String.format("%.1f", a.distanceTo(b)) + ", songs " + a.songs + "/" + b.songs + ", perched " + a.isPerched() + "/" + b.isPerched());
+			}
+			switch (phase[0]) {
+				case 0 -> {
+					if (a.distanceTo(b) < 3.0) {
+						System.out.println("[little_birds_gametest] zebra finches: company kept after " + ticks[0] + " ticks");
+						b.setOrderedToSit(true);
+						a.sing();
+						since[0] = ticks[0];
+						phase[0] = 1;
+					}
+				}
+				case 1 -> {
+					if (b.songs >= 1) {
+						System.out.println("[little_birds_gametest] zebra finches: answered after " + (ticks[0] - since[0]) + " ticks");
+						since[0] = ticks[0];
+						phase[0] = 2;
+					} else if (ticks[0] - since[0] > 80) {
+						try {
+							helper.fail("a finch should answer a phrase it hears within 80 ticks");
+						} finally {
+							tidy.run();
+						}
+					}
+				}
+				case 2 -> {
+					if (ticks[0] - since[0] >= 60) {
+						try {
+							helper.assertTrue(a.songs == 1 && b.songs == 1, "an answer should get no answer (songs " + a.songs + "/" + b.songs + ")");
+						} catch (RuntimeException e) {
+							tidy.run();
+							throw e;
+						}
+						a.setOrderedToSit(false);
+						b.setOrderedToSit(false);
+						a.callTo(perch);
+						b.callTo(perch);
+						phase[0] = 3;
+					}
+				}
+				case 3 -> {
+					if (a.isPerched() && b.isPerched()) {
+						double apart = a.position().distanceTo(b.position());
+						System.out.println("[little_birds_gametest] zebra finches: both perched after " + ticks[0] + " ticks, apart " + String.format("%.2f", apart) + ", plains weight " + plains + ", savanna weight " + savanna);
+						try {
+							helper.assertTrue(apart > 0.3 && apart < 0.5, "two finches should sit either side of the middle (apart " + apart + ")");
+							helper.assertTrue(plains == 6, "plains should spawn zebra finches at weight 6 (got " + plains + ")");
+							helper.assertTrue(savanna == 0, "savannas should not spawn zebra finches (got " + savanna + ")");
+						} finally {
+							tidy.run();
+						}
+						phase[0] = 4;
+						helper.succeed();
+					}
+				}
+				default -> {
+				}
+			}
 		});
 	}
 

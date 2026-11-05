@@ -187,9 +187,14 @@ public abstract class LittleBird extends ShoulderRidingEntity {
 		return 0.0;
 	}
 
-	/** Whether this bird and another may call the same perch home (a lovebird and its partner). */
+	/** Whether this bird and another may call the same perch home (a lovebird and its partner, two finches). */
 	public boolean sharesPerchWith(LittleBird other) {
 		return false;
+	}
+
+	/** How many other birds may share its perch: none, for a bird that sits alone. */
+	public int maxPerchMates() {
+		return 0;
 	}
 
 	@Override
