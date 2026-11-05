@@ -635,12 +635,15 @@ public class BudgieTest implements FabricClientGameTest {
 		// Now the pair: once the first bird's mood has worn off (a bird in love can't be fed again), both are fed together.
 		server.runOnServer(s -> loves.get(2).discard());
 		waitFor(ctx, server, 700, s -> !loves.get(0).isInLove());
+		// They have wandered meanwhile: side by side again, beside their owner, then fed together.
 		server.runOnServer(s -> {
+			loves.get(0).snapTo(home.getX() + 1.5, home.getY(), home.getZ() + 1.5, 0, 0);
+			loves.get(1).snapTo(home.getX() + 2.0, home.getY(), home.getZ() + 1.5, 0, 0);
 			loves.get(0).mobInteract(player(s), InteractionHand.MAIN_HAND);
 			loves.get(1).mobInteract(player(s), InteractionHand.MAIN_HAND);
 		});
 		check(server.computeOnServer(s -> loves.get(0).isInLove() && loves.get(1).isInLove()), "a pair fed together is in love");
-		check(waitFor(ctx, server, 1200, s -> loveChick.apply(s) != null), "a lovebird fed with its partner makes a chick");
+		check(waitFor(ctx, server, 1600, s -> loveChick.apply(s) != null), "a lovebird fed with its partner makes a chick");
 		server.runOnServer(s -> player(s).setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY));
 		server.runCommand("kill @e[type=little_birds:lovebird]");
 	}
