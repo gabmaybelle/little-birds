@@ -28,23 +28,27 @@ which checks fail, code put back), what was learned, and what was deliberately n
   The greeting: when its owner comes back after an hour or more away, the budgie chirps hello and
   bobs; asleep on its perch it is quiet. Shoulder on request: a sneak-use with an empty hand puts
   it on its owner's shoulder, where it stays through jumps and falls; a sneak-use on it or on a
-  block sets it down; using a perch sets a shoulder bird down on it or calls the nearest budgie
-  to it.
+  block sets it down; using a perch sets a shoulder bird down on it or calls a bird to it. A perch
+  seats its own bird (or a pair that shares): using a taken perch calls its own bird back, and a
+  shoulder bird set down on another bird's perch hops down at its owner's feet.
+- **Done, food:** the millet spray, one treat crafted from wheat and seeds, tames a wild bird at
+  once, draws a bird to the hand that holds it and gets a happy bob (and a song from a song
+  bird); farm snacks (`#little_birds:snacks`) feed a tamed bird and grow a chick; cocoa beans and
+  poisonous potatoes are refused (`#little_birds:refused`).
 - **Done, sounds:** the budgie's voice is real: eleven short cuts (three hello chirps, five bits of
   chatter, three soft settling warbles) from CC0 recordings of pet budgies on Freesound, mono OGG
   in `sounds/budgie/`, wired in `sounds.json`. Gabby's own recordings can replace them file for file.
 - **Done, icon:** a green budgie on its perch, `art/icon.png`, in the jars and the listing folder.
 - **Placeholder:** none. The textures are drawn by `tools/draw-art.py`; hand-painted ones can
   replace them in the same layout.
-- **Not yet:** nothing of 0.1.0's feature list; what is left is release prep.
+- **Not yet:** nothing planned is left unbuilt; no known bugs.
 
 ## Next
 
-1. Release 0.3.0: the eating features and the two song birds are unreleased on `main`; a hand
-   play of the jar first (the lifecycle's rule), then the GitHub release and the listing kit redone
-   for five birds. No cage: birds stay free and live on perches.
-2. Gabby's listings on Modrinth and CurseForge (the kit in the listing folder is ready for
-   0.2.0). Hand plays done 2026-11-04: the three birds, then the chicks.
+1. The listings on Modrinth and CurseForge catch up with the newest release (five birds, the
+   treats and snacks). No cage: birds stay free and live on perches.
+2. The 1.21.1 port, once the mod is listed on CurseForge and has been played (the lifecycle's
+   rule).
 
 New ideas during the build go to 0.2.0 or later, never into 0.1.0.
 

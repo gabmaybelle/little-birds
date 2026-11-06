@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.3.0: Songs and snacks
+
+Two song birds and something to feed them all, for Minecraft 26.3 on Fabric and NeoForge. Worlds
+from 0.2.0 keep their birds.
 
 - A perch seats its own bird. Using a perch that a bird already calls home calls that bird back
   to it (or does nothing if it's sitting there), rather than handing the perch to your nearest
