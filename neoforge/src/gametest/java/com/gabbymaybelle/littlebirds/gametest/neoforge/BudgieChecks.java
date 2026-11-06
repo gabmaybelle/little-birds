@@ -211,14 +211,18 @@ final class BudgieChecks {
 		player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
 		Budgie bird = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
 		bird.snapTo(at.getX() + 1.5, at.getY(), at.getZ() + 0.5, 0, 0);
-		bird.tame(player);
-		bird.setOrderedToSit(true);
-		level.addFreshEntity(bird);
 		Runnable tidy = () -> {
 			bird.discard();
 			level.getServer().getPlayerList().remove(player);
 		};
-		helper.runAfterDelay(15, () -> {
+		// The other tests in the batch set the clock as they start (to night); a jump of an hour or
+		// more after taming would read as the owner having been away, so the taming waits ten ticks.
+		helper.runAfterDelay(10, () -> {
+			bird.tame(player);
+			bird.setOrderedToSit(true);
+			level.addFreshEntity(bird);
+		});
+		helper.runAfterDelay(25, () -> {
 			try {
 				helper.assertTrue(bird.greetings == 0, "a budgie just tamed should have nothing to say yet");
 				helper.assertTrue(bird.getAmbientSound() == Sounds.BUDGIE_CHATTER.get(), "awake, the budgie should chatter");
@@ -229,7 +233,7 @@ final class BudgieChecks {
 				throw e;
 			}
 		});
-		helper.runAfterDelay(30, () -> {
+		helper.runAfterDelay(40, () -> {
 			try {
 				helper.assertTrue(bird.greetings == 0, "while its owner is away it should stay quiet");
 				player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
@@ -238,7 +242,7 @@ final class BudgieChecks {
 				throw e;
 			}
 		});
-		helper.runAfterDelay(60, () -> {
+		helper.runAfterDelay(70, () -> {
 			try {
 				helper.assertTrue(bird.greetings == 1, "when its owner comes back after an hour away, the budgie should say hello (greetings: " + bird.greetings + ")");
 				player.setPos(away.getX() + 0.5, away.getY(), away.getZ() + 0.5);
@@ -247,8 +251,8 @@ final class BudgieChecks {
 				throw e;
 			}
 		});
-		helper.runAfterDelay(75, () -> player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5));
-		helper.runAfterDelay(105, () -> {
+		helper.runAfterDelay(85, () -> player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5));
+		helper.runAfterDelay(115, () -> {
 			try {
 				System.out.println("[little_birds_gametest] greeting: " + bird.greetings + " greeting(s) after one long absence and one quick in-and-out");
 				helper.assertTrue(bird.greetings == 1, "a quick in-and-out should earn no second greeting (greetings: " + bird.greetings + ")");
@@ -863,9 +867,9 @@ final class BudgieChecks {
 						System.out.println("[little_birds_gametest] zebra finches: answered after " + (ticks[0] - since[0]) + " ticks");
 						since[0] = ticks[0];
 						phase[0] = 2;
-					} else if (ticks[0] - since[0] > 80) {
+					} else if (ticks[0] - since[0] > 200) {
 						try {
-							helper.fail("a finch should answer a phrase it hears within 80 ticks");
+							helper.fail("a finch should answer a phrase it hears within 200 ticks (on ground " + b.onGround() + ", sitting " + b.isOrderedToSit() + ")");
 						} finally {
 							tidy.run();
 						}
@@ -898,6 +902,82 @@ final class BudgieChecks {
 							tidy.run();
 						}
 						phase[0] = 4;
+						helper.succeed();
+					}
+				}
+				default -> {
+				}
+			}
+		});
+	}
+
+	/** A perch seats its own bird: used while one bird calls it home, it gives nothing to a second; used while its bird is off its seat, it calls that bird back. */
+	@SuppressWarnings("removal") // makeMockServerPlayerInLevel: taming needs a player
+	static void oneSeat(GameTestHelper helper) {
+		ServerLevel level = helper.getLevel();
+		BlockPos perch = helper.absolutePos(new BlockPos(5, 1, 3));
+		BlockPos at = helper.absolutePos(new BlockPos(2, 1, 3));
+		level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+		level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.WEST));
+		ServerPlayer player = helper.makeMockServerPlayerInLevel();
+		player.setPos(at.getX() + 0.5, at.getY(), at.getZ() + 0.5);
+		player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+		Budgie a = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+		Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+		a.snapTo(perch.getX() - 2.5, perch.getY(), perch.getZ() + 0.5, 0, 0);
+		a.tame(player);
+		level.addFreshEntity(a);
+		a.callTo(perch);
+		b.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 0, 0);
+		b.tame(player);
+		// Still, with no AI: tests run side by side, and a bird looking for a perch could find a neighbour's.
+		b.setNoAi(true);
+		level.addFreshEntity(b);
+		Runnable tidy = () -> {
+			a.discard();
+			b.discard();
+			level.getServer().getPlayerList().remove(player);
+			level.setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		};
+		Runnable use = () -> level.getBlockState(perch).useWithoutItem(level, player, new BlockHitResult(Vec3.atCenterOf(perch), Direction.UP, perch, false));
+		int[] phase = {0};
+		int[] ticks = {0};
+		helper.onEachTick(() -> {
+			ticks[0]++;
+			switch (phase[0]) {
+				case 0 -> {
+					if (a.isPerched()) {
+						use.run();
+						try {
+							helper.assertTrue(b.getPerch() == null && perch.equals(a.getPerch()), "using a perch another bird calls home should give nothing to a second bird (perch " + perch + " is " + level.getBlockState(perch) + ", a: " + a.getPerch() + " perched " + a.isPerched() + ", b: " + b.getPerch() + " alive " + b.isAlive() + ")");
+						} catch (RuntimeException e) {
+							// Once: the watch keeps ticking after a failure, and a second try would only muddy the report.
+							phase[0] = -1;
+							tidy.run();
+							throw e;
+						}
+						a.setPerched(false);
+						a.snapTo(perch.getX() - 3.5, perch.getY(), perch.getZ() + 0.5, 0, 0);
+						a.setOrderedToSit(true);
+						phase[0] = 1;
+					}
+				}
+				case 1 -> {
+					if (ticks[0] % 10 == 0) {
+						use.run();
+						phase[0] = 2;
+					}
+				}
+				case 2 -> {
+					if (a.isPerched()) {
+						System.out.println("[little_birds_gametest] one seat: its own bird called back after " + ticks[0] + " ticks, second bird's perch " + b.getPerch());
+						try {
+							helper.assertTrue(b.getPerch() == null, "the second bird should still have no claim on the perch");
+						} finally {
+							tidy.run();
+						}
+						phase[0] = 3;
 						helper.succeed();
 					}
 				}

@@ -1,9 +1,7 @@
 package com.gabbymaybelle.littlebirds;
 
-import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.phys.AABB;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -65,11 +63,6 @@ public class FindPerchGoal extends Goal {
 	 * partner, two finches) and there is room: a bar seats this bird and its perch mates, no more.
 	 */
 	private boolean claimedByAnother(BlockPos perch) {
-		AABB around = new AABB(perch).inflate(FindPerchGoal.REACH * 2);
-		List<LittleBird> others = this.bird.level().getEntitiesOfClass(LittleBird.class, around, other -> other != this.bird && perch.equals(other.getPerch()));
-		if (others.size() > this.bird.maxPerchMates()) {
-			return true;
-		}
-		return others.stream().anyMatch(other -> !this.bird.sharesPerchWith(other));
+		return !PerchBlock.hasSeatFor(this.bird, this.bird.level(), perch);
 	}
 }

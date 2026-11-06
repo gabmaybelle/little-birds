@@ -81,6 +81,7 @@ public class BudgieTest implements FabricClientGameTest {
 			perch(ctx, server, home);
 			greeting(ctx, server, home);
 			shoulder(ctx, server, home);
+			oneSeat(ctx, server, home);
 			cockatiel(ctx, server, home);
 			lovebirds(ctx, server, home);
 			canary(ctx, server, home);
@@ -403,6 +404,70 @@ public class BudgieTest implements FabricClientGameTest {
 			s.overworld().setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
 			s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
 		});
+	}
+
+	/**
+	 * A perch seats its own bird: used while another bird calls it home, it doesn't hand the perch
+	 * to a second bird; used while its own bird is off its seat, it calls that bird back; a bird
+	 * set down from the shoulder onto another bird's perch hops down beside it.
+	 */
+	private void oneSeat(ClientGameTestContext ctx, TestServerContext server, BlockPos home) {
+		BlockPos perch = home.offset(3, 0, 3);
+		Budgie a = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			level.setBlockAndUpdate(perch.below(), Blocks.OAK_PLANKS.defaultBlockState());
+			level.setBlockAndUpdate(perch, Perch.BLOCK.get().defaultBlockState().setValue(PerchBlock.FACING, Direction.NORTH));
+			level.setBlockAndUpdate(perch.above(), Blocks.AIR.defaultBlockState());
+			level.setBlockAndUpdate(perch.above(2), Blocks.AIR.defaultBlockState());
+			Budgie b = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			b.snapTo(perch.getX() + 2.5, perch.getY(), perch.getZ() + 0.5, 0, 0);
+			b.tame(player(s));
+			level.addFreshEntity(b);
+			b.callTo(perch);
+			return b;
+		});
+		check(waitFor(ctx, server, 300, s -> a.isPerched()), "the first bird is called to the perch and settles");
+		Budgie b = server.computeOnServer(s -> {
+			ServerLevel level = s.overworld();
+			Budgie f = Birds.BUDGIE.get().create(level, EntitySpawnReason.COMMAND);
+			f.snapTo(home.getX() + 1.5, home.getY(), home.getZ() + 1.5, 0, 0);
+			f.tame(player(s));
+			level.addFreshEntity(f);
+			f.setOrderedToSit(true);
+			return f;
+		});
+		ctx.waitTicks(10);
+		usePerch(server, perch);
+		ctx.waitTicks(10);
+		check(!perch.equals(server.computeOnServer(s -> b.getPerch())) && perch.equals(server.computeOnServer(s -> a.getPerch())) && a.isPerched(),
+				"using a perch another bird calls home doesn't hand it to a second bird");
+		// Its own bird off its seat and told to sit: using the perch calls it back.
+		server.runOnServer(s -> {
+			a.setPerched(false);
+			a.snapTo(perch.getX() - 4.5, perch.getY(), perch.getZ() + 0.5, 0, 0);
+			a.setOrderedToSit(true);
+		});
+		ctx.waitTicks(10);
+		usePerch(server, perch);
+		check(waitFor(ctx, server, 400, s -> a.isPerched()), "using the perch calls its own bird back to it");
+		check(!perch.equals(server.computeOnServer(s -> b.getPerch())), "and the second bird still has no claim on it");
+		// The second bird on the shoulder, then the perch used: it hops down beside, not onto the seat.
+		server.runOnServer(s -> {
+			player(s).setShiftKeyDown(true);
+			b.mobInteract(player(s), InteractionHand.MAIN_HAND);
+			player(s).setShiftKeyDown(false);
+		});
+		check(waitFor(ctx, server, 60, s -> b.isOnShoulder()), "the second bird gets on the shoulder");
+		usePerch(server, perch);
+		ctx.waitTicks(5);
+		check(!b.isOnShoulder() && !perch.equals(server.computeOnServer(s -> b.getPerch())) && a.isPerched(),
+				"set down from the shoulder onto another bird's perch, it hops down beside it");
+		server.runCommand("kill @e[type=little_birds:budgie]");
+		server.runOnServer(s -> {
+			s.overworld().setBlockAndUpdate(perch, Blocks.AIR.defaultBlockState());
+			s.overworld().setBlockAndUpdate(perch.below(), Blocks.AIR.defaultBlockState());
+		});
+		ctx.waitTicks(5);
 	}
 
 	/**
@@ -731,7 +796,7 @@ public class BudgieTest implements FabricClientGameTest {
 		// A phrase from one is answered by the other, and the answer by nothing.
 		int aSongs = a.songs, bSongs = b.songs;
 		server.runOnServer(s -> a.sing());
-		check(waitFor(ctx, server, 80, s -> b.songs == bSongs + 1), "a finch that hears another sing answers it (songs: " + b.songs + ")");
+		check(waitFor(ctx, server, 200, s -> b.songs == bSongs + 1), "a finch that hears another sing answers it (songs: " + b.songs + ")");
 		ctx.waitTicks(60);
 		check(a.songs == aSongs + 1 && b.songs == bSongs + 1, "an answer gets no answer (songs: " + a.songs + ", " + b.songs + ")");
 		// On its own, by day, a tamed finch sings a phrase within a minute or so.

@@ -51,6 +51,8 @@ public class ZebraFinch extends LittleBird {
 	public static final int ANSWER_MIN = 20;
 	public static final int ANSWER_SPAN = 20;
 	public static final int QUIET_AFTER = 100;
+	/** How long an answer that is due waits for the finch to be able to sing (landing, say) before it is dropped. */
+	public static final int ANSWER_PATIENCE = 100;
 	/** How far either side of the bar's middle each of two finches sits. */
 	private static final double SHARED_SEAT = 0.2;
 
@@ -58,6 +60,8 @@ public class ZebraFinch extends LittleBird {
 	private int nextSong = -1;
 	/** Ticks until it answers a finch it heard; 0 when it isn't about to. */
 	private int answerIn;
+	/** Ticks an answer that has fallen due keeps waiting for a chance to be sung; 0 when none is due. */
+	private int answerDue;
 	/** Ticks after a phrase during which it won't answer. */
 	private int quiet;
 	/** Set while a phrase is an answer, so an answer calls for no answers of its own. */
@@ -154,7 +158,7 @@ public class ZebraFinch extends LittleBird {
 		this.nextSong = SONG_WAIT_MIN + this.random.nextInt(SONG_WAIT_SPAN);
 		if (!this.answering) {
 			for (ZebraFinch other : this.level().getEntitiesOfClass(ZebraFinch.class, this.getBoundingBox().inflate(HEARING),
-					o -> o != this && o.isAlive() && o.quiet == 0 && o.answerIn == 0)) {
+					o -> o != this && o.isAlive() && o.quiet == 0 && o.answerIn == 0 && o.answerDue == 0)) {
 				other.answerIn = ANSWER_MIN + this.random.nextInt(ANSWER_SPAN);
 			}
 		}
@@ -171,10 +175,20 @@ public class ZebraFinch extends LittleBird {
 		if (this.quiet > 0) {
 			this.quiet--;
 		}
-		if (this.answerIn > 0 && --this.answerIn == 0 && this.canSing(level)) {
-			this.answering = true;
-			this.sing();
-			this.answering = false;
+		if (this.answerIn > 0) {
+			this.answerIn--;
+			if (this.answerIn == 0) {
+				this.answerDue = ANSWER_PATIENCE;
+			}
+		}
+		if (this.answerDue > 0) {
+			this.answerDue--;
+			if (this.canSing(level)) {
+				this.answerDue = 0;
+				this.answering = true;
+				this.sing();
+				this.answering = false;
+			}
 		}
 		if (this.nextSong < 0) {
 			this.nextSong = SONG_WAIT_MIN + this.random.nextInt(SONG_WAIT_SPAN);

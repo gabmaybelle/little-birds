@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A perch seats its own bird. Using a perch that a bird already calls home calls that bird back
+  to it (or does nothing if it's sitting there), rather than handing the perch to your nearest
+  bird as well; a bird set down from your shoulder onto another bird's perch hops down at your
+  feet instead. Pairs (lovebirds, finches) still share.
 - The zebra finch: the smallest little bird, with a red beak, in three colours (the grey with its
   orange cheeks and barred tail, the fawn, the white). Finches like company: one keeps near the
   nearest other finch, two may share one perch and sit on it side by side, and by day a tamed

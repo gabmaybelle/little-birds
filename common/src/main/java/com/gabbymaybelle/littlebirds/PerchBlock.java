@@ -1,5 +1,6 @@
 package com.gabbymaybelle.littlebirds;
 
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
@@ -69,10 +70,26 @@ public class PerchBlock extends HorizontalDirectionalBlock {
 		return state.getValue(FACING).toYRot();
 	}
 
+	/** The birds that call the perch at {@code pos} home, within reach of it. */
+	public static List<LittleBird> homeBirds(Level level, BlockPos pos) {
+		return level.getEntitiesOfClass(LittleBird.class, new AABB(pos).inflate(FindPerchGoal.REACH * 2), b -> b.isAlive() && pos.equals(b.getPerch()));
+	}
+
 	/**
-	 * Using the perch with an empty hand: a budgie on the player's shoulder is set down on it, or
-	 * else the player's nearest budgie is called to it (it becomes that bird's home). A sneak-use
-	 * is handled before this by {@link Shoulder#trySetDown}.
+	 * Whether the perch at {@code pos} has a seat for this bird: no other bird calls it home, or
+	 * only ones this bird shares with (a lovebird's partner, another finch), and no more of them
+	 * than it allows. A bird that already calls it home has its seat.
+	 */
+	public static boolean hasSeatFor(LittleBird bird, Level level, BlockPos pos) {
+		List<LittleBird> others = homeBirds(level, pos).stream().filter(b -> b != bird).toList();
+		return others.size() <= bird.maxPerchMates() && others.stream().allMatch(bird::sharesPerchWith);
+	}
+
+	/**
+	 * Using the perch with an empty hand: a bird on the player's shoulder is set down on it (or,
+	 * if the perch is another bird's, beside it), or else a bird is called to it: the perch's own
+	 * bird first, if it is off its seat, otherwise the player's nearest bird the perch has a seat
+	 * for, which makes it home. A sneak-use is handled before this by {@link Shoulder#trySetDown}.
 	 */
 	@Override
 	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
@@ -84,12 +101,18 @@ public class PerchBlock extends HorizontalDirectionalBlock {
 		}
 		LittleBird bird = Shoulder.riding(player);
 		if (bird != null) {
-			Vec3 seat = seatFor(bird, pos);
-			bird.snapTo(seat.x, seat.y, seat.z, bird.getYRot(), 0.0F);
-			bird.callTo(pos);
+			if (hasSeatFor(bird, level, pos)) {
+				Vec3 seat = seatFor(bird, pos);
+				bird.snapTo(seat.x, seat.y, seat.z, bird.getYRot(), 0.0F);
+				bird.callTo(pos);
+			} else {
+				// Someone else's perch: it hops down at its owner's feet instead.
+				bird.setOnShoulder(false);
+				bird.snapTo(player.getX(), player.getY(), player.getZ(), bird.getYRot(), 0.0F);
+			}
 			return InteractionResult.SUCCESS;
 		}
-		bird = nearestBird(level, pos, player);
+		bird = birdToCall(level, pos, player);
 		if (bird == null) {
 			return InteractionResult.PASS;
 		}
@@ -97,22 +120,31 @@ public class PerchBlock extends HorizontalDirectionalBlock {
 		return InteractionResult.SUCCESS;
 	}
 
-	/** The player's nearest tamed budgie within reach of the perch that isn't already sitting on it. */
-	private static @Nullable LittleBird nearestBird(Level level, BlockPos pos, Player player) {
+	/**
+	 * The bird a use of the perch calls: of the player's tamed birds within reach that aren't on
+	 * its seat already, one that calls this perch home comes first, then the nearest the perch
+	 * has a seat for. Null when there is none (a stranger's perch, or its bird is on it).
+	 */
+	private static @Nullable LittleBird birdToCall(Level level, BlockPos pos, Player player) {
 		AABB around = new AABB(pos).inflate(CALL_REACH);
-		LittleBird nearest = null;
+		LittleBird pick = null;
 		double best = Double.MAX_VALUE;
 		for (LittleBird bird : level.getEntitiesOfClass(LittleBird.class, around, b -> b.isTame() && b.isOwnedBy(player) && !b.isOnShoulder())) {
-			if (bird.isPerched() && pos.equals(bird.getPerch())) {
+			boolean itsOwn = pos.equals(bird.getPerch());
+			if (itsOwn && bird.isPerched()) {
 				continue;
 			}
-			double distance = bird.distanceToSqr(Vec3.atCenterOf(pos));
-			if (distance < best) {
-				best = distance;
-				nearest = bird;
+			if (!itsOwn && !hasSeatFor(bird, level, pos)) {
+				continue;
+			}
+			// Its own bird always beats a newcomer; among equals, the nearest.
+			double score = bird.distanceToSqr(Vec3.atCenterOf(pos)) - (itsOwn ? CALL_REACH * CALL_REACH * 4 : 0.0);
+			if (score < best) {
+				best = score;
+				pick = bird;
 			}
 		}
-		return nearest;
+		return pick;
 	}
 
 	@Override

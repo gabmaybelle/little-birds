@@ -47,8 +47,9 @@ public final class Shoulder {
 
 	/**
 	 * A sneak-use on a block with an empty hand: the budgie on the player's shoulder hops down onto
-	 * it (onto the seat if it's a perch, which becomes its home). True when a bird was set down,
-	 * so the loader can stop the use there. Does nothing on the client but say whether it would.
+	 * it (onto the seat if it's a perch with a seat for it, which becomes its home; beside a perch
+	 * that is another bird's). True when a bird was set down, so the loader can stop the use
+	 * there. Does nothing on the client but say whether it would.
 	 */
 	public static boolean trySetDown(Player player, Level level, BlockPos pos, Direction face) {
 		if (!player.isShiftKeyDown() || !player.getMainHandItem().isEmpty()) {
@@ -60,7 +61,7 @@ public final class Shoulder {
 		}
 		if (!level.isClientSide()) {
 			bird.setOnShoulder(false);
-			if (level.getBlockState(pos).getBlock() instanceof PerchBlock) {
+			if (level.getBlockState(pos).getBlock() instanceof PerchBlock && PerchBlock.hasSeatFor(bird, level, pos)) {
 				Vec3 seat = PerchBlock.seatFor(bird, pos);
 				bird.snapTo(seat.x, seat.y, seat.z, bird.getYRot(), 0.0F);
 				bird.callTo(pos);
