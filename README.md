@@ -26,6 +26,9 @@ Minecraft 26.3, Fabric and NeoForge. Made by Gabby. The birds' voices are cut fr
 a cockatiel by Tairblenn, lovebirds by 5ro4, bowlingballout and xv920, canaries by DaniloSFX,
 ReadeOnly and brfindla, zebra finches by TheKingOfGeeks360 and petebuchwald.
 
+Playing Bedrock? [Little Birds for Bedrock](https://github.com/gabmaybelle/little-birds-bedrock) is
+the same birds as an add-on.
+
 ## Building
 
 ```
